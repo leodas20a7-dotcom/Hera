@@ -2334,7 +2334,7 @@ function App() {
           <div className="cart-container">
             {cart.length === 0 ? (
               <div className="empty-cart-card">
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <div className="empty-cart-top-bar" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '28px' }}>
                   <button
                     type="button"
                     className="btn-status-history-pill"
