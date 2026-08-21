@@ -1,0 +1,10 @@
+node_modules
+hera-app/node_modules
+hera-app/dist
+dist
+dist-ssr
+*.local
+.env
+.DS_Store
+.idea
+.vscode

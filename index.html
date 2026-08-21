@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HERA FRUITS - Stock & Order Portal</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- React & Babel Framework scripts -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Sample Stock Data matching user screenshot exactly
+        const INITIAL_STOCKS = [
+            { id: 1, grnNo: 'GRN/0001345/26-27', product: 'NZ ROYAL GALA', brand: 'AOZORA-BLUE', variety: 'ROYAL GALA', lotNo: '1322- ANN', rateType: 'Daily', qty: 54.00, unit: 'BOX', brandTagClass: 'tag-blue' },
+            { id: 2, grnNo: 'GRN/0001345/26-27', product: 'NZ ROYAL GALA', brand: 'TIGER- BLACK', variety: 'ROYAL GALA', lotNo: '1322- ANN', rateType: 'Daily', qty: 270.00, unit: 'BOX', brandTagClass: 'tag-darkblue' },
+            { id: 3, grnNo: 'GRN/0001345/26-27', product: 'NZ ROYAL GALA', brand: 'CAJ', variety: 'ROYAL GALA', lotNo: '1322- ANN', rateType: 'Daily', qty: 2.00, unit: 'BOX', brandTagClass: 'tag-cyan' },
+            { id: 4, grnNo: 'GRN/0001340/26-27', product: 'NZ ROYAL GALA', brand: 'TIGER- BLACK', variety: 'ROYAL GALA', lotNo: '9738282', rateType: 'Daily', qty: 5.00, unit: 'BOX', brandTagClass: 'tag-darkblue' },
+            { id: 5, grnNo: 'GRN/0001340/26-27', product: 'NZ ROYAL GALA', brand: 'CAJ', variety: 'ROYAL GALA', lotNo: '9738282', rateType: 'Daily', qty: 22.00, unit: 'BOX', brandTagClass: 'tag-cyan' },
+            { id: 6, grnNo: 'GRN/0001341/26-27', product: 'NZ ROYAL GALA', brand: 'BIG CRUNCH', variety: 'ROYAL GALA', lotNo: '9220440', rateType: 'Daily', qty: 9.00, unit: 'BOX', brandTagClass: 'tag-purple' }
+        ];
+
+        function HeraFruitsApp() {
+            // Step 1: 'landing', Step 2: 'stocks', Step 3: 'cart'
+            const [step, setStep] = useState('landing');
+            const [stocks, setStocks] = useState(INITIAL_STOCKS);
+            const [cart, setCart] = useState([]);
+            
+            // Modal states
+            const [selectedProduct, setSelectedProduct] = useState(null);
+            const [qtyToEnter, setQtyToEnter] = useState('');
+            const [customerName, setCustomerName] = useState('');
+            const [transport, setTransport] = useState('');
+            
+            // Generated Challans state
+            const [generatedChallan, setGeneratedChallan] = useState(null);
+
+            // Handle row click -> open Qty Modal
+            const handleRowClick = (item) => {
+                setSelectedProduct(item);
+                setQtyToEnter('1');
+            };
+
+            // Add Qty to Cart
+            const handleAddToCart = (e) => {
+                e.preventDefault();
+                const numQty = parseFloat(qtyToEnter);
+                if (!numQty || numQty <= 0) return alert('Please enter a valid quantity.');
+                if (numQty > selectedProduct.qty) return alert(`Only ${selectedProduct.qty} BOX available in stock!`);
+
+                const existingIndex = cart.findIndex(c => c.id === selectedProduct.id);
+                if (existingIndex > -1) {
+                    const newCart = [...cart];
+                    newCart[existingIndex].orderQty += numQty;
+                    setCart(newCart);
+                } else {
+                    setCart([...cart, { ...selectedProduct, orderQty: numQty }]);
+                }
+
+                setSelectedProduct(null);
+                setQtyToEnter('');
+            };
+
+            // Place Order & Generate Challans
+            const handlePlaceOrder = (e) => {
+                e.preventDefault();
+                if (cart.length === 0) return alert('Your cart is empty!');
+                if (!customerName.trim()) return alert('Please enter Customer Name.');
+                if (!transport.trim()) return alert('Please enter Transport Details.');
+
+                // Deduct stock
+                const updatedStocks = stocks.map(st => {
+                    const cartItem = cart.find(c => c.id === st.id);
+                    if (cartItem) {
+                        return { ...st, qty: Math.max(0, st.qty - cartItem.orderQty) };
+                    }
+                    return st;
+                });
+                setStocks(updatedStocks);
+
+                // Create Challan Object
+                const challanId = 'CHAL-' + Math.floor(100000 + Math.random() * 900000);
+                const newChallan = {
+                    id: challanId,
+                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    customerName,
+                    transport,
+                    items: [...cart]
+                };
+
+                setGeneratedChallan(newChallan);
+                setCart([]);
+            };
+
+            return (
+                <div className="app-root">
+                    {/* Header Bar */}
+                    <header className="app-header">
+                        <div className="brand-logo" onClick={() => setStep('landing')}>
+                            <i className="fa-solid fa-apple-whole"></i> HERA FRUITS
+                        </div>
+                        {step !== 'landing' && (
+                            <div className="header-right">
+                                <button className="btn-stock-nav" onClick={() => setStep('stocks')}>
+                                    <i className="fa-solid fa-cubes"></i> Available Stock
+                                </button>
+                                <button className="cart-badge-btn" onClick={() => setStep('cart')}>
+                                    <i className="fa-solid fa-cart-shopping"></i> Cart
+                                    <span className="badge-count">{cart.reduce((sum, i) => sum + i.orderQty, 0)}</span>
+                                </button>
+                            </div>
+                        )}
+                    </header>
+
+                    {/* Step 1: Simple Landing Page (HERA -> Click to Proceed) */}
+                    {step === 'landing' && (
+                        <div className="landing-screen">
+                            <div className="landing-card">
+                                <div className="brand-hero-title">HERA</div>
+                                <p className="brand-subtitle">Fruits Stock & Challan Portal</p>
+                                <div className="arrow-down-indicator">
+                                    <i className="fa-solid fa-arrow-down-long"></i>
+                                </div>
+                                <button className="btn-proceed" onClick={() => setStep('stocks')}>
+                                    Proceed to Stocks <i className="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2: Available Stocks View matching reference UI */}
+                    {step === 'stocks' && (
+                        <div className="stocks-screen">
+                            <div className="table-card glass-card">
+                                <div className="table-header-title">
+                                    <h2>AVAILABLE STOCKS</h2>
+                                    <p>Click on any row to enter box quantity & add to cart.</p>
+                                </div>
+                                <div className="table-responsive">
+                                    <table className="hera-table">
+                                        <thead>
+                                            <tr>
+                                                <th>GRN NO</th>
+                                                <th>PRODUCT</th>
+                                                <th>BRAND / VARIETY</th>
+                                                <th>LOT NO</th>
+                                                <th>RATE TYPE</th>
+                                                <th>QTY</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stocks.map(item => (
+                                                <tr key={item.id} onClick={() => handleRowClick(item)} className="stock-row">
+                                                    <td className="grn-cell">{item.grnNo}</td>
+                                                    <td className="product-cell"><strong>{item.product}</strong></td>
+                                                    <td>
+                                                        <span className={`brand-pill ${item.brandTagClass}`}>{item.brand}</span>
+                                                        <div className="variety-sub">{item.variety}</div>
+                                                    </td>
+                                                    <td className="lot-cell">{item.lotNo}</td>
+                                                    <td>{item.rateType}</td>
+                                                    <td>
+                                                        <span className={`qty-badge ${item.qty <= 9 ? 'qty-low' : 'qty-normal'}`}>
+                                                            {item.qty.toFixed(2)} {item.unit}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Cart & Place Order with Customer Name & Transport */}
+                    {step === 'cart' && (
+                        <div className="cart-screen">
+                            <div className="glass-card cart-card">
+                                <h2><i className="fa-solid fa-cart-flatbed"></i> Order Cart</h2>
+                                
+                                {cart.length === 0 ? (
+                                    <div className="empty-state">
+                                        <p>No items in cart yet.</p>
+                                        <button className="btn-proceed" style={{marginTop:'12px'}} onClick={() => setStep('stocks')}>Select Fruits Stock</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <table className="hera-table cart-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>PRODUCT / BRAND</th>
+                                                    <th>LOT NO</th>
+                                                    <th>ORDER QTY</th>
+                                                    <th>ACTION</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {cart.map((c, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>
+                                                            <strong>{c.product}</strong>
+                                                            <div><span className={`brand-pill ${c.brandTagClass}`}>{c.brand}</span></div>
+                                                        </td>
+                                                        <td>{c.lotNo}</td>
+                                                        <td><strong>{c.orderQty} BOX</strong></td>
+                                                        <td>
+                                                            <button className="btn-delete" onClick={() => {
+                                                                const newC = [...cart];
+                                                                newC.splice(idx, 1);
+                                                                setCart(newC);
+                                                            }}><i class="fa-solid fa-trash"></i></button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        <form onSubmit={handlePlaceOrder} className="checkout-form">
+                                            <h3>Customer & Transport Details</h3>
+                                            <div className="form-row">
+                                                <div className="form-group">
+                                                    <label>Customer Name *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        required 
+                                                        value={customerName} 
+                                                        onChange={e => setCustomerName(e.target.value)} 
+                                                        placeholder="Enter customer name..."
+                                                    />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Transport / Vehicle Select *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        required 
+                                                        value={transport} 
+                                                        onChange={e => setTransport(e.target.value)} 
+                                                        placeholder="e.g. VRL Logistics / Vehicle MH-12-8899..."
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button type="submit" className="btn-confirm-order">
+                                                <i className="fa-solid fa-file-invoice"></i> Place Order & Issue Inward / Delivery Challan
+                                            </button>
+                                        </form>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Quantity Selection Modal (Triggered on Row Click) */}
+                    {selectedProduct && (
+                        <div className="modal-backdrop">
+                            <div className="modal-card">
+                                <h3>Select Quantity</h3>
+                                <p className="product-summary">{selectedProduct.product} ({selectedProduct.brand})</p>
+                                <p className="stock-info">Available: <strong>{selectedProduct.qty} BOX</strong></p>
+                                
+                                <form onSubmit={handleAddToCart}>
+                                    <div className="form-group margin-v">
+                                        <label>How much quantity do you want to enter? (BOX)</label>
+                                        <input 
+                                            type="number" 
+                                            required 
+                                            min="1" 
+                                            max={selectedProduct.qty}
+                                            value={qtyToEnter}
+                                            onChange={e => setQtyToEnter(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="modal-actions">
+                                        <button type="button" className="btn-cancel" onClick={() => setSelectedProduct(null)}>Cancel</button>
+                                        <button type="submit" className="btn-add">Add to Cart</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Challan Modal View (Shows both Inward & Delivery Challan) */}
+                    {generatedChallan && (
+                        <div className="modal-backdrop">
+                            <div className="modal-card challan-modal">
+                                <div className="challan-header-actions">
+                                    <button className="btn-print" onClick={() => window.print()}><i className="fa-solid fa-print"></i> Print Slip</button>
+                                    <button className="btn-close" onClick={() => setGeneratedChallan(null)}>&times;</button>
+                                </div>
+
+                                <div className="dual-challan-slips">
+                                    {/* 1. Inward Challan Slip */}
+                                    <div className="slip-box inward-slip">
+                                        <div className="slip-badge">INWARD CHALLAN</div>
+                                        <div className="slip-title">HERA FRUITS INWARD RECEIPT</div>
+                                        <div className="slip-meta">
+                                            <div><strong>Challan Ref:</strong> {generatedChallan.id}-IN</div>
+                                            <div><strong>Date:</strong> {generatedChallan.date}</div>
+                                            <div><strong>Vendor/Source:</strong> Hera Cold Storage</div>
+                                        </div>
+                                        <table className="slip-table">
+                                            <thead>
+                                                <tr><th>Item Description</th><th>Inward Qty</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {generatedChallan.items.map((it, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{it.product} - {it.brand} ({it.lotNo})</td>
+                                                        <td>{it.orderQty} BOX</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="slip-sign">Inward Manager Sign: _____________</div>
+                                    </div>
+
+                                    {/* 2. Delivery Challan Slip */}
+                                    <div className="slip-box delivery-slip">
+                                        <div className="slip-badge delivery">DELIVERY CHALLAN</div>
+                                        <div className="slip-title">HERA FRUITS DISPATCH SLIP</div>
+                                        <div className="slip-meta">
+                                            <div><strong>Challan Ref:</strong> {generatedChallan.id}-DEL</div>
+                                            <div><strong>Date:</strong> {generatedChallan.date}</div>
+                                            <div><strong>Customer:</strong> {generatedChallan.customerName}</div>
+                                            <div><strong>Transport:</strong> {generatedChallan.transport}</div>
+                                        </div>
+                                        <table className="slip-table">
+                                            <thead>
+                                                <tr><th>Dispatched Item</th><th>Dispatch Qty</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {generatedChallan.items.map((it, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{it.product} - {it.brand} ({it.lotNo})</td>
+                                                        <td>{it.orderQty} BOX</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="slip-sign">Customer / Driver Receiver Sign: _____________</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<HeraFruitsApp />);
+    </script>
+</body>
+</html>
