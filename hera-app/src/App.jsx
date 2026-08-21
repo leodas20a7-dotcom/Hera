@@ -439,6 +439,61 @@ function App() {
   const [activeChallanTab, setActiveChallanTab] = useState('delivery'); // 'delivery' | 'inward'
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // PWA Web App Mobile Install Prompt State
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIosSafari, setIsIosSafari] = useState(false);
+
+  useEffect(() => {
+    // Check if already launched in standalone mobile app mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) return;
+
+    const isDismissed = localStorage.getItem('hera_install_dismissed');
+
+    // Android / Chrome PWA install trigger
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+      if (!isDismissed) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Detect iOS Safari
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+    const isSafari = isIos && /safari/.test(ua) && !/crios|fxios/.test(ua);
+    if (isSafari && !isStandalone && !isDismissed) {
+      setIsIosSafari(true);
+      setShowInstallBanner(true);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallBanner(false);
+        setDeferredInstallPrompt(null);
+      }
+    } else if (isIosSafari) {
+      alert("To install Hera Logistics on your iPhone:\n\n1. Tap the Share button (⎋) at the bottom\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add' to finish");
+    } else {
+      alert("To install Hera Logistics:\n\nTap your browser menu (⋮) and choose 'Add to Home screen' or 'Install App'.");
+    }
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('hera_install_dismissed', 'true');
+  };
+
   // Live Supabase Sync
   useEffect(() => {
     async function loadSupabaseData() {
@@ -1347,6 +1402,9 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* PWA Mobile Web App Install Banner */}
+        {renderInstallBanner()}
       </div>
     );
   }
@@ -1826,6 +1884,9 @@ function App() {
         {acceptingRequest && renderAcceptInwardModal()}
         {issuedChallan && renderChallanModal()}
         {showLearnMoreModal && renderLearnMoreModal()}
+
+        {/* PWA Mobile Web App Install Banner */}
+        {renderInstallBanner()}
       </div>
     );
   }
@@ -2419,6 +2480,9 @@ function App() {
       {showInwardStatusModal && renderInwardStatusHistoryModal()}
       {issuedChallan && renderChallanModal()}
       {showLearnMoreModal && renderLearnMoreModal()}
+
+      {/* PWA Mobile Web App Install Banner */}
+      {renderInstallBanner()}
     </div>
   );
 
@@ -3137,6 +3201,29 @@ function App() {
               Open Live Stock &rarr;
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderInstallBanner() {
+    if (!showInstallBanner) return null;
+    return (
+      <div className="pwa-install-banner">
+        <div className="pwa-install-left">
+          <img src={heraLogo} alt="Hera Logo" className="pwa-install-logo" />
+          <div className="pwa-install-text">
+            <strong>Install Hera Logistics App</strong>
+            <span>{isIosSafari ? 'Tap Share ⎋ → Add to Home Screen' : 'Add to Home screen for 1-tap stock access'}</span>
+          </div>
+        </div>
+        <div className="pwa-install-actions">
+          <button className="btn-pwa-install" onClick={handleInstallClick}>
+            {isIosSafari ? 'How to Add' : 'Install App'}
+          </button>
+          <button className="btn-pwa-dismiss" onClick={handleDismissInstall} title="Dismiss">
+            ✕
+          </button>
         </div>
       </div>
     );

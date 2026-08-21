@@ -3676,4 +3676,128 @@ html, body {
   }
 }
 
+/* ==========================================================================
+   PWA WEB APP MOBILE INSTALL SUGGESTION BANNER
+   ========================================================================== */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 20px);
+  max-width: 440px;
+  background: #0F172A;
+  color: #FFFFFF;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38), 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  animation: slideUpInstallBanner 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
+}
+
+@keyframes slideUpInstallBanner {
+  from {
+    transform: translate(-50%, 60px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.pwa-install-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pwa-install-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #FFFFFF;
+  padding: 1px;
+}
+
+.pwa-install-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pwa-install-text strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-install-text span {
+  font-size: 0.65rem;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-pwa-install {
+  background: #B91C1C;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.4);
+}
+
+.btn-pwa-install:active {
+  transform: scale(0.96);
+  background: #991B1B;
+}
+
+.btn-pwa-dismiss {
+  background: rgba(255, 255, 255, 0.12);
+  color: #CBD5E1;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.68rem;
+  transition: background 0.15s ease;
+}
+
+.btn-pwa-dismiss:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+
 
