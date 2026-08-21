@@ -439,6 +439,7 @@ function App() {
   const [activeChallanTab, setActiveChallanTab] = useState('delivery'); // 'delivery' | 'inward'
   const [isDownloading, setIsDownloading] = useState(false);
   const [showChallanActionMenu, setShowChallanActionMenu] = useState(false);
+  const [showCustomerChallanModal, setShowCustomerChallanModal] = useState(false);
 
   // PWA Web App Mobile Install Prompt State
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -706,12 +707,13 @@ function App() {
 
     const handlePopState = (e) => {
       // 1. If any modal is open, close modal only (prevents accidental app exit)
-      if (activeItem || showInwardModal || issuedChallan || showLearnMoreModal || showInwardStatusModal || issuedInwardReceipt || acceptingRequest) {
+      if (activeItem || showInwardModal || issuedChallan || showLearnMoreModal || showInwardStatusModal || showCustomerChallanModal || issuedInwardReceipt || acceptingRequest) {
         setActiveItem(null);
         setShowInwardModal(false);
         setIssuedChallan(null);
         setShowLearnMoreModal(false);
         setShowInwardStatusModal(false);
+        setShowCustomerChallanModal(false);
         setIssuedInwardReceipt(null);
         setAcceptingRequest(null);
         return;
@@ -2332,6 +2334,19 @@ function App() {
           <div className="cart-container">
             {cart.length === 0 ? (
               <div className="empty-cart-card">
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn-status-history-pill"
+                    onClick={() => setShowCustomerChallanModal(true)}
+                    title="View Past Delivery Notes & Outward Challans"
+                  >
+                    <span>🚚 Delivery Note History</span>
+                    <span className="cart-badge">
+                      {challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length}
+                    </span>
+                  </button>
+                </div>
                 <div className="empty-icon">🛒</div>
                 <h3>Your Delivery Cart is Empty</h3>
                 <p>Select items from your inventory to dispatch cargo.</p>
@@ -2347,9 +2362,22 @@ function App() {
                       <div>
                         <h2>Delivery Items ({cart.length})</h2>
                       </div>
-                      <span className="total-items-badge">
-                        {cart.reduce((s, i) => s + i.selectedQty, 0)} Units Selected
-                      </span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-status-history-pill"
+                          onClick={() => setShowCustomerChallanModal(true)}
+                          title="View Past Delivery Notes & Outward Challans"
+                        >
+                          <span>🚚 Delivery Notes</span>
+                          <span className="cart-badge">
+                            {challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length}
+                          </span>
+                        </button>
+                        <span className="total-items-badge">
+                          {cart.reduce((s, i) => s + i.selectedQty, 0)} Units Selected
+                        </span>
+                      </div>
                     </div>
 
                     <div className="table-card">
@@ -2479,6 +2507,7 @@ function App() {
       {activeItem && renderDispatchModal()}
       {issuedInwardReceipt && renderInwardReceiptModal()}
       {showInwardStatusModal && renderInwardStatusHistoryModal()}
+      {showCustomerChallanModal && renderCustomerChallanModal()}
       {issuedChallan && renderChallanModal()}
       {showLearnMoreModal && renderLearnMoreModal()}
 
@@ -3241,6 +3270,132 @@ function App() {
 
           <div className="modal-actions" style={{ marginTop: '14px' }}>
             <button type="button" className="btn-hero-secondary" onClick={() => setShowInwardStatusModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderCustomerChallanModal() {
+    const myChallans = challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)));
+    return (
+      <div className="modal-backdrop" onClick={() => setShowCustomerChallanModal(false)}>
+        <div className="modal-card status-history-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="dispatch-modal-header" style={{ marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 className="modal-title" style={{ textAlign: 'left', margin: 0 }}>My Delivery Notes & Challans</h2>
+              <p className="modal-sub-clean" style={{ margin: '3px 0 0 0', textAlign: 'left', fontSize: '0.76rem', color: '#64748B' }}>
+                Issued outbound delivery notes & warehouse gate pass history
+              </p>
+            </div>
+            <button className="modal-close-icon" onClick={() => setShowCustomerChallanModal(false)}>✕</button>
+          </div>
+
+          {myChallans.length === 0 ? (
+            <div className="empty-cart-card" style={{ padding: '24px' }}>
+              <div className="empty-icon">🚚</div>
+              <h3>No Delivery Notes Generated Yet</h3>
+              <p>When you dispatch items from your inventory, official delivery notes will appear here.</p>
+            </div>
+          ) : (
+            <div className="stocks-table-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="stocks-desktop-table">
+                <table className="stocks-table">
+                  <thead>
+                    <tr>
+                      <th>Delivery Note (DC)</th>
+                      <th>Issue Date</th>
+                      <th>Destination</th>
+                      <th>Vehicle No</th>
+                      <th style={{ textAlign: 'right' }}>Total Units</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myChallans.map(dc => (
+                      <tr key={dc.id}>
+                        <td><strong className="doc-num-bold">{dc.dcNo}</strong></td>
+                        <td>{dc.dcDate}</td>
+                        <td>{dc.destination}</td>
+                        <td><span className="wh-bay-badge">{dc.vehicleNo}</span></td>
+                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{dc.totalQty} Units</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            className="row-dispatch-btn"
+                            onClick={() => {
+                              setShowCustomerChallanModal(false);
+                              setIssuedChallan(dc);
+                            }}
+                          >
+                            View / Print &rarr;
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card Feed */}
+              <div className="stocks-mobile-cards">
+                {myChallans.map(dc => (
+                  <div
+                    key={dc.id}
+                    className="mobile-stock-card"
+                    onClick={() => {
+                      setShowCustomerChallanModal(false);
+                      setIssuedChallan(dc);
+                    }}
+                  >
+                    <div className="mobile-card-top">
+                      <div className="mobile-card-product">
+                        <span className="mobile-product-name">{dc.destination}</span>
+                        <div className="brand-sub-badge" style={{ marginTop: '2px' }}>
+                          <span className="variety-txt">Lorry: {dc.vehicleNo}</span>
+                        </div>
+                      </div>
+                      <span className="wh-bay-badge">{dc.totalQty} Units</span>
+                    </div>
+
+                    <div className="mobile-card-metrics">
+                      <div className="mobile-metric-item">
+                        <span className="mobile-metric-label">DC NUMBER</span>
+                        <span className="mobile-metric-value font-mono">{dc.dcNo}</span>
+                      </div>
+                      <div className="mobile-metric-item">
+                        <span className="mobile-metric-label">DATE</span>
+                        <span className="mobile-metric-value">{dc.dcDate}</span>
+                      </div>
+                      <div className="mobile-metric-item">
+                        <span className="mobile-metric-label">STATUS</span>
+                        <span className="mobile-metric-value" style={{ color: '#0f766e', fontWeight: '800' }}>DISPATCHED</span>
+                      </div>
+                    </div>
+
+                    <div className="mobile-card-footer">
+                      <span className="mobile-more-info">Prepared: {dc.preparedBy || 'ADMIN'}</span>
+                      <button
+                        className="mobile-card-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCustomerChallanModal(false);
+                          setIssuedChallan(dc);
+                        }}
+                      >
+                        View / Print &rarr;
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="modal-actions" style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-hero-secondary" onClick={() => setShowCustomerChallanModal(false)}>
               Close
             </button>
           </div>
