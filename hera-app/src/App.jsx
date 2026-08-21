@@ -1414,7 +1414,6 @@ function App() {
                     </button>
                   </p>
                 )}
-                <div className="login-help-line">Helpline: <strong>96622 96633</strong></div>
               </div>
             </div>
           </div>
