@@ -1737,14 +1737,16 @@ function App() {
 
               <div className="official-report-sheet">
                 <div className="report-header-flex">
-                  <div className="rep-gst">GST.No. : 33AAFCH8632K1ZE</div>
+                  <div className="rep-top-meta-row">
+                    <span className="rep-gst">GSTIN: 33AAFCH8632K1ZE</span>
+                    <span className="rep-contact">📞 Helpline: 96622 96633</span>
+                  </div>
                   <div className="rep-center-brand">
                     <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
                     <h2 className="rep-company-title">HERA LOGISTICS PVT.LTD.,</h2>
                     <p className="rep-tagline">Logistics Simplified</p>
                     <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                   </div>
-                  <div className="rep-contact">💬 96622 96633</div>
                 </div>
 
                 <div className="rep-client-box">
@@ -2271,14 +2273,16 @@ function App() {
 
             <div className="official-report-sheet">
               <div className="report-header-flex">
-                <div className="rep-gst">GST.No. : 33AAFCH8632K1ZE</div>
+                <div className="rep-top-meta-row">
+                  <span className="rep-gst">GSTIN: 33AAFCH8632K1ZE</span>
+                  <span className="rep-contact">📞 Helpline: 96622 96633</span>
+                </div>
                 <div className="rep-center-brand">
                   <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
                   <h2 className="rep-company-title">HERA LOGISTICS PVT.LTD.,</h2>
                   <p className="rep-tagline">Logistics Simplified</p>
                   <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                 </div>
-                <div className="rep-contact">💬 96622 96633</div>
               </div>
 
               <div className="rep-client-box">

@@ -1957,12 +1957,23 @@ html, body {
 
 .report-header-flex {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   border-bottom: 1.5px solid var(--text-main);
   padding-bottom: 6px;
   margin-bottom: 8px;
   font-size: 0.76rem;
+  gap: 6px;
+}
+
+.rep-top-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .rep-gst {
@@ -2570,8 +2581,7 @@ html, body {
 
   .modal-content,
   .challan-modal-container,
-  .inward-modal-dialog,
-  .official-report-sheet {
+  .inward-modal-dialog {
     max-width: 95vw !important;
     width: 95vw !important;
     max-height: 92vh !important;
@@ -3831,6 +3841,102 @@ html, body {
     background: transparent;
     border: none;
     padding: 4px 4px 8px 4px;
+  }
+
+  /* Monthly Stock Report Sheet on Mobile (Auto-Scaled to Fit 100% Screen) */
+  .inward-report-screen {
+    padding: 4px 6px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .report-toolbar {
+    padding: 4px 2px 8px 2px;
+  }
+
+  .report-toolbar .page-heading {
+    font-size: 1.05rem;
+  }
+
+  .official-report-sheet {
+    padding: 8px 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .report-header-flex {
+    flex-direction: column;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    gap: 4px;
+    border-bottom-width: 1px;
+  }
+
+  .rep-top-meta-row {
+    font-size: 6.8px;
+  }
+
+  .rep-brand-logo-img {
+    height: 22px;
+    max-width: 80px;
+    margin-bottom: 2px;
+  }
+
+  .rep-company-title {
+    font-size: 8.5px;
+    letter-spacing: 0.3px;
+  }
+
+  .rep-tagline {
+    font-size: 6.2px;
+  }
+
+  .rep-address {
+    font-size: 6.2px;
+    line-height: 1.2;
+  }
+
+  .rep-client-box {
+    padding: 4px 6px;
+    margin-bottom: 6px;
+    font-size: 6.8px;
+    line-height: 1.2;
+  }
+
+  .rep-client-box strong {
+    font-size: 7.2px;
+  }
+
+  .rep-report-title {
+    font-size: 7.5px;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .rep-table-exact {
+    font-size: 6.8px;
+    width: 100%;
+    border-width: 1px;
+  }
+
+  .rep-table-exact th {
+    padding: 3px 2px;
+    font-size: 6.2px;
+    letter-spacing: 0;
+    line-height: 1.15;
+    border-width: 1px;
+  }
+
+  .rep-table-exact td {
+    padding: 3px 3px;
+    font-size: 6.8px;
+    line-height: 1.15;
+    border-width: 1px;
   }
 }
 
