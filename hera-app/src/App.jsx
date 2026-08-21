@@ -440,6 +440,12 @@ function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showChallanActionMenu, setShowChallanActionMenu] = useState(false);
   const [showCustomerChallanModal, setShowCustomerChallanModal] = useState(false);
+  const [cartBadgeBump, setCartBadgeBump] = useState(false);
+
+  const triggerCartBump = () => {
+    setCartBadgeBump(true);
+    setTimeout(() => setCartBadgeBump(false), 300);
+  };
 
   // PWA Web App Mobile Install Prompt State
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -926,12 +932,14 @@ function App() {
     setActiveItem(null);
     setInputQty('');
     setQtyError('');
+    triggerCartBump();
   };
 
   const handleRemoveFromCart = (index) => {
     const newCart = [...cart];
     newCart.splice(index, 1);
     setCart(newCart);
+    triggerCartBump();
     if (newCart.length === 0) setCartStep('review');
   };
 
@@ -981,6 +989,7 @@ function App() {
     setChallanHistory(prev => [challanObj, ...prev]);
     setCart([]);
     setCartStep('review');
+    triggerCartBump();
 
     // Async Supabase Sync for Delivery Notes
     try {
@@ -1481,7 +1490,7 @@ function App() {
 
         {/* TAB 1: MASTER HOME & PRIME DRY STORAGE HERO */}
         {activeTab === 'adminOverview' && (
-          <div className="home-page-screen">
+          <div className="home-page-screen tab-page-enter">
             <div className="home-content-container">
               {/* Full-width clean hero matching reference image */}
               <WarehouseHeroBanner
@@ -1494,7 +1503,7 @@ function App() {
 
         {/* TAB 2: INVENTORY */}
         {activeTab === 'adminInventory' && (
-          <div className="stocks-page-screen">
+          <div className="stocks-page-screen tab-page-enter">
             <div className="stocks-container">
               <div className="inventory-top-toolbar">
                 <div>
@@ -1593,7 +1602,7 @@ function App() {
 
         {/* TAB 3: INCOMING GOODS / INWARD REQUESTS */}
         {activeTab === 'adminIncoming' && (
-          <div className="stocks-page-screen">
+          <div className="stocks-page-screen tab-page-enter">
             <div className="stocks-container">
               <div className="dashboard-top-banner">
                 <div>
@@ -1737,7 +1746,7 @@ function App() {
 
         {/* TAB 4: OFFICIAL INWARD REPORT */}
         {activeTab === 'adminInwardReport' && (
-          <div className="inward-report-screen">
+          <div className="inward-report-screen tab-page-enter">
             <div className="report-container">
               <div className="report-toolbar">
                 <div>
@@ -1829,7 +1838,7 @@ function App() {
 
         {/* TAB 5: CHALLAN HISTORY */}
         {activeTab === 'adminChallans' && (
-          <div className="stocks-page-screen">
+          <div className="stocks-page-screen tab-page-enter">
             <div className="stocks-container">
               <h1 className="page-heading">Delivery Notes Issued</h1>
 
@@ -1977,7 +1986,7 @@ function App() {
             <button className="btn-logout-mini" onClick={handleLogout} title="Sign Out">✕</button>
           </div>
 
-          <button className={`cart-btn header-cart-pill ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => navigateToTab('cart')}>
+          <button className={`cart-btn header-cart-pill ${activeTab === 'cart' ? 'active' : ''} ${cartBadgeBump ? 'badge-bump' : ''}`} onClick={() => navigateToTab('cart')}>
             <span className="cart-label-desktop">Delivery Cart</span>
             <span className="cart-label-mobile">🛒</span>
             <span className="cart-badge">{totalCartCount}</span>
@@ -1987,7 +1996,7 @@ function App() {
 
       {/* CLIENT TAB 0: HOME / PRIME DRY STORAGE HERO */}
       {activeTab === 'clientHome' && (
-        <div className="home-page-screen">
+        <div className="home-page-screen tab-page-enter">
           <div className="home-content-container">
             {/* Full-width clean hero matching reference image */}
             <WarehouseHeroBanner
@@ -2000,7 +2009,7 @@ function App() {
 
       {/* CLIENT TAB 1: MY INVENTORY */}
       {activeTab === 'clientInventory' && (
-        <div className="stocks-page-screen">
+        <div className="stocks-page-screen tab-page-enter">
           <div className="stocks-container">
             <div className="dashboard-top-banner" style={{ marginBottom: '12px' }}>
               <div>
@@ -2129,7 +2138,7 @@ function App() {
 
       {/* CLIENT TAB 2: SEND GOODS TO WAREHOUSE */}
       {activeTab === 'clientSendGoods' && (
-        <div className="cart-page-screen">
+        <div className="cart-page-screen tab-page-enter">
           <div className="cart-container">
             <div className="cart-white-card checkout-card">
               <div className="cart-header-row">
@@ -2295,7 +2304,7 @@ function App() {
 
       {/* CLIENT TAB 3: INWARD STOCK REPORT */}
       {activeTab === 'clientInwardReport' && (
-        <div className="inward-report-screen">
+        <div className="inward-report-screen tab-page-enter">
           <div className="report-container">
             <div className="report-toolbar">
               <div>
@@ -2391,7 +2400,7 @@ function App() {
 
       {/* CLIENT TAB 4: DELIVERY CART & CHECKOUT */}
       {activeTab === 'cart' && (
-        <div className="cart-page-screen">
+        <div className="cart-page-screen tab-page-enter">
           <div className="cart-container">
             {cart.length === 0 ? (
               <div className="empty-cart-card">
