@@ -438,6 +438,7 @@ function App() {
   const [issuedChallan, setIssuedChallan] = useState(null);
   const [activeChallanTab, setActiveChallanTab] = useState('delivery'); // 'delivery' | 'inward'
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showChallanActionMenu, setShowChallanActionMenu] = useState(false);
 
   // PWA Web App Mobile Install Prompt State
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
@@ -2671,9 +2672,10 @@ function App() {
 
   function renderChallanModal() {
     return (
-      <div className="challan-view-overlay">
-        <div className="challan-modal-container">
-          <div className="challan-toolbar">
+      <div className="challan-view-overlay" onClick={() => { setIssuedChallan(null); setShowChallanActionMenu(false); }}>
+        <div className="challan-modal-container" onClick={(e) => e.stopPropagation()}>
+          {/* Desktop Toolbar */}
+          <div className="challan-toolbar challan-toolbar-desktop">
             <div className="toolbar-tabs">
               <button
                 className={`challan-tab-btn ${activeChallanTab === 'delivery' ? 'active' : ''}`}
@@ -2696,7 +2698,34 @@ function App() {
               <button className="doc-print-btn" onClick={() => window.print()}>
                 🖨️ Print
               </button>
-              <button className="doc-close-btn" onClick={() => setIssuedChallan(null)}>&times;</button>
+              <button className="doc-close-btn" onClick={() => { setIssuedChallan(null); setShowChallanActionMenu(false); }}>&times;</button>
+            </div>
+          </div>
+
+          {/* Mobile Clean Single-Action Toolbar */}
+          <div className="challan-toolbar challan-toolbar-mobile">
+            <div className="mobile-toolbar-title-wrap">
+              <span className="mobile-toolbar-badge">
+                {activeChallanTab === 'delivery' ? '📄 Delivery Note' : '📥 Inward GRN'}
+              </span>
+            </div>
+
+            <div className="mobile-toolbar-actions">
+              <button
+                type="button"
+                className="btn-mobile-options-pill"
+                onClick={() => setShowChallanActionMenu(true)}
+              >
+                ⚡ Options ▾
+              </button>
+              <button
+                type="button"
+                className="doc-close-btn"
+                onClick={() => { setIssuedChallan(null); setShowChallanActionMenu(false); }}
+                title="Close Document"
+              >
+                &times;
+              </button>
             </div>
           </div>
 
@@ -2840,19 +2869,19 @@ function App() {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan="6" className="total-label-cell" style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                        Total Qty
+                      <td colSpan="6" className="total-label-cell" style={{ textAlign: 'right' }}>
+                        Total Quantity ({issuedChallan.items[0]?.unit || 'BAGS'})
                       </td>
-                      <td className="total-qty-cell" style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                        {issuedChallan.totalQty}
+                      <td className="total-qty-cell" style={{ textAlign: 'right' }}>
+                        {issuedChallan.totalQty?.toFixed(2)}
                       </td>
-                      <td></td>
+                      <td className="total-qty-cell"></td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              {/* Footer Remarks & Signature */}
+              {/* Footer Section */}
               <div className="challan-footer-grid">
                 <div className="footer-remarks-col">
                   <div className="remarks-header-row">
@@ -2872,6 +2901,88 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* User-Friendly Mobile Action Sheet Popup Overlay */}
+        {showChallanActionMenu && (
+          <div className="action-menu-backdrop" onClick={() => setShowChallanActionMenu(false)}>
+            <div className="action-menu-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="action-sheet-pill-handle"></div>
+              <div className="action-menu-header">
+                <h3>Document Actions</h3>
+                <p>Choose an action for {issuedChallan.dcNo}</p>
+              </div>
+
+              <div className="action-menu-list">
+                <button
+                  type="button"
+                  className={`action-menu-item ${activeChallanTab === 'delivery' ? 'active-selection' : ''}`}
+                  onClick={() => {
+                    setActiveChallanTab('delivery');
+                    setShowChallanActionMenu(false);
+                  }}
+                >
+                  <span className="action-item-icon">📄</span>
+                  <div className="action-item-text">
+                    <strong>Delivery Note / Challan</strong>
+                    <span>Customer delivery & outward dispatch note</span>
+                  </div>
+                  {activeChallanTab === 'delivery' && <span className="action-check-badge">ACTIVE</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className={`action-menu-item ${activeChallanTab === 'inward' ? 'active-selection' : ''}`}
+                  onClick={() => {
+                    setActiveChallanTab('inward');
+                    setShowChallanActionMenu(false);
+                  }}
+                >
+                  <span className="action-item-icon">📥</span>
+                  <div className="action-item-text">
+                    <strong>Inward Goods Receipt (GRN)</strong>
+                    <span>Warehouse stock entry & gate pass record</span>
+                  </div>
+                  {activeChallanTab === 'inward' && <span className="action-check-badge">ACTIVE</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className="action-menu-item action-primary-pdf"
+                  onClick={() => {
+                    setShowChallanActionMenu(false);
+                    handleDownloadPdf();
+                  }}
+                  disabled={isDownloading}
+                >
+                  <span className="action-item-icon">⬇️</span>
+                  <div className="action-item-text">
+                    <strong>{isDownloading ? '⏳ Generating PDF...' : 'Download Official PDF'}</strong>
+                    <span>Save high-res document to your device</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="action-menu-item"
+                  onClick={() => {
+                    setShowChallanActionMenu(false);
+                    window.print();
+                  }}
+                >
+                  <span className="action-item-icon">🖨️</span>
+                  <div className="action-item-text">
+                    <strong>Print Document</strong>
+                    <span>Print directly via local printer</span>
+                  </div>
+                </button>
+              </div>
+
+              <button type="button" className="btn-action-cancel" onClick={() => setShowChallanActionMenu(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

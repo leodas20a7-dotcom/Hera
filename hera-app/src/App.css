@@ -2098,9 +2098,12 @@ html, body {
   gap: 8px;
 }
 
-.toolbar-tabs {
+.challan-toolbar-desktop {
   display: flex;
-  gap: 6px;
+}
+
+.challan-toolbar-mobile {
+  display: none;
 }
 
 .challan-tab-btn {
@@ -3380,43 +3383,75 @@ html, body {
     display: flex;
     flex-direction: column;
     margin: 2px auto;
-    border-radius: 12px;
+    border-radius: 14px;
+    overflow: hidden;
   }
 
-  .challan-toolbar {
-    padding: 4px 6px;
-    flex-wrap: wrap;
-    gap: 4px;
+  .challan-toolbar-desktop {
+    display: none !important;
+  }
+
+  .challan-toolbar-mobile {
+    display: flex !important;
     justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #0F172A;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
-  .toolbar-tabs {
-    display: flex;
-    gap: 3px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .challan-tab-btn {
-    font-size: 0.65rem;
-    padding: 3px 6px;
-    white-space: nowrap;
-  }
-
-  .toolbar-actions {
+  .mobile-toolbar-title-wrap {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
   }
 
-  .doc-pdf-btn, .doc-print-btn {
-    font-size: 0.65rem;
-    padding: 3px 7px;
+  .mobile-toolbar-badge {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #FFFFFF;
+  }
+
+  .mobile-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-mobile-options-pill {
+    background: #B91C1C;
+    color: #FFFFFF;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(185, 28, 28, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .btn-mobile-options-pill:active {
+    transform: scale(0.96);
+    background: #991B1B;
   }
 
   .doc-close-btn {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     padding: 0 4px;
+    color: #FFFFFF;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
   }
 
   .challan-printable-sheet {
@@ -3921,6 +3956,161 @@ html, body {
 .btn-pwa-dismiss:hover {
   background: rgba(255, 255, 255, 0.25);
   color: #FFFFFF;
+}
+
+/* ==========================================================================
+   USER-FRIENDLY DOCUMENT ACTIONS POPUP OVERLAY SHEET (MOBILE)
+   ========================================================================== */
+.action-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeInActionBackdrop 0.2s ease forwards;
+  padding: 0;
+}
+
+@keyframes fadeInActionBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.action-menu-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: #FFFFFF;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 16px 16px 24px 16px;
+  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideUpActionSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
+}
+
+@keyframes slideUpActionSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.action-sheet-pill-handle {
+  width: 38px;
+  height: 4px;
+  background: #CBD5E1;
+  border-radius: 9999px;
+  align-self: center;
+  margin-bottom: 2px;
+}
+
+.action-menu-header {
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.action-menu-header h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0;
+}
+
+.action-menu-header p {
+  font-size: 0.74rem;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+.action-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.action-menu-item:active {
+  transform: scale(0.98);
+  background: #F1F5F9;
+}
+
+.action-menu-item.active-selection {
+  border-color: #0D9488;
+  background: #F0FDFA;
+}
+
+.action-menu-item.action-primary-pdf {
+  border-color: #FECACA;
+  background: #FEF2F2;
+}
+
+.action-item-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.action-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.action-item-text strong {
+  font-size: 0.86rem;
+  color: #0F172A;
+}
+
+.action-item-text span {
+  font-size: 0.72rem;
+  color: #64748B;
+}
+
+.action-check-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #0D9488;
+  background: #CCFBF1;
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.btn-action-cancel {
+  width: 100%;
+  padding: 12px;
+  background: #F1F5F9;
+  color: #475569;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s ease;
+}
+
+.btn-action-cancel:active {
+  background: #E2E8F0;
 }
 
 
