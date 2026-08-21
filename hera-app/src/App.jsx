@@ -1778,6 +1778,16 @@ function App() {
                         <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qty}</td>
                       </tr>
                     ))}
+                    {Array.from({ length: Math.max(0, 7 - stocks.filter(s => s.unit === 'BAGS').length) }).map((_, i) => (
+                      <tr key={`blank-admin-${i}`} className="blank-rep-row">
+                        <td style={{ textAlign: 'center' }}>&nbsp;</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    ))}
                   </tbody>
                   <tfoot>
                     <tr className="rep-total-row">
@@ -1787,6 +1797,18 @@ function App() {
                     </tr>
                   </tfoot>
                 </table>
+
+                <div className="rep-sheet-footer">
+                  <div className="rep-footer-left">
+                    <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                    <div className="rep-timestamp-note">Report As On: 31-May-2026 • Thoothukudi Central Hub</div>
+                  </div>
+                  <div className="rep-footer-right">
+                    <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
+                    <div className="rep-sign-rule"></div>
+                    <div className="rep-sign-label">Warehouse Authorized Signatory</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2314,6 +2336,16 @@ function App() {
                       <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qty}</td>
                     </tr>
                   ))}
+                  {Array.from({ length: Math.max(0, 7 - stocks.filter(s => s.unit === 'BAGS' && (!currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))).length) }).map((_, i) => (
+                    <tr key={`blank-client-${i}`} className="blank-rep-row">
+                      <td style={{ textAlign: 'center' }}>&nbsp;</td>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="rep-total-row">
@@ -2327,6 +2359,18 @@ function App() {
                   </tr>
                 </tfoot>
               </table>
+
+              <div className="rep-sheet-footer">
+                <div className="rep-footer-left">
+                  <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                  <div className="rep-timestamp-note">Report As On: 31-May-2026 • Thoothukudi Central Hub</div>
+                </div>
+                <div className="rep-footer-right">
+                  <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
+                  <div className="rep-sign-rule"></div>
+                  <div className="rep-sign-label">Warehouse Authorized Signatory</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

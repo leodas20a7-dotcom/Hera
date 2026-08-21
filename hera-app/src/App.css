@@ -1921,12 +1921,6 @@ html, body {
   justify-content: space-between;
   align-items: center;
   background: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-card-sm);
-  padding: 6px 14px;
-  box-shadow: var(--shadow-subtle);
-  flex-shrink: 0;
-  gap: 8px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1945,7 +1939,7 @@ html, body {
   background: #FFFFFF;
   border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-card-sm);
-  padding: 14px 22px;
+  padding: 16px 24px;
   box-shadow: var(--shadow-subtle);
   max-width: 100%;
   width: 100%;
@@ -1953,6 +1947,9 @@ html, body {
   overflow-y: auto;
   box-sizing: border-box;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 165px);
 }
 
 .report-header-flex {
@@ -2029,23 +2026,23 @@ html, body {
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
   border-radius: 6px;
-  padding: 5px 10px;
-  margin-bottom: 8px;
+  padding: 6px 12px;
+  margin-bottom: 10px;
   text-align: left;
   line-height: 1.35;
 }
 
 .rep-client-box strong {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-main);
 }
 
 .rep-report-title {
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 900;
   color: var(--text-main);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   letter-spacing: 0.5px;
 }
 
@@ -2053,22 +2050,86 @@ html, body {
   width: 100%;
   border-collapse: collapse;
   border: 1.5px solid var(--text-main);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .rep-table-exact th {
   background: #1E293B;
   color: #FFFFFF;
   border: 1px solid var(--text-main);
-  padding: 5px 8px;
-  font-size: 0.72rem;
+  padding: 6px 10px;
+  font-size: 0.74rem;
   text-transform: uppercase;
 }
 
 .rep-table-exact td {
   border: 1px solid var(--border-subtle);
-  padding: 4px 8px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+}
+
+.blank-rep-row td {
+  height: 28px;
+}
+
+.rep-sheet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: 16px;
+  margin-top: auto;
+  border-top: 1px dashed #CBD5E1;
   font-size: 0.74rem;
+}
+
+.rep-footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rep-verified-badge {
+  font-weight: 800;
+  font-size: 0.72rem;
+  color: #0F766E;
+  background: #CCFBF1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.rep-timestamp-note {
+  font-size: 0.68rem;
+  color: #64748B;
+}
+
+.rep-footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 2px;
+}
+
+.rep-sign-company {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.rep-sign-rule {
+  width: 150px;
+  height: 1px;
+  background: #000000;
+  margin-top: 24px;
+  margin-bottom: 2px;
+}
+
+.rep-sign-label {
+  font-size: 0.68rem;
+  color: #64748B;
+  font-weight: 600;
 }
 
 .challan-view-overlay {
