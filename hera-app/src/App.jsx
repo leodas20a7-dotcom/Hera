@@ -322,15 +322,24 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Active page tab inside portal:
+  // Active page tab inside portal with memory persistence:
   // For Admin: 'adminOverview' (Home) | 'adminInventory' | 'adminIncoming' | 'adminInwardReport' | 'adminChallans'
   // For Client: 'clientHome' (Home) | 'clientInventory' | 'clientSendGoods' | 'clientInwardReport' | 'cart'
   const [activeTab, setActiveTab] = useState(() => {
     const savedUser = localStorage.getItem('hera_current_user');
     if (!savedUser) return 'portalLogin';
+    const savedTab = localStorage.getItem('hera_active_tab');
+    if (savedTab && savedTab !== 'portalLogin') return savedTab;
     const parsed = JSON.parse(savedUser);
     return parsed.role === 'admin' ? 'adminOverview' : 'clientHome';
   });
+
+  // Track and persist active tab in memory
+  useEffect(() => {
+    if (activeTab && activeTab !== 'portalLogin') {
+      localStorage.setItem('hera_active_tab', activeTab);
+    }
+  }, [activeTab]);
 
   const [showLearnMoreModal, setShowLearnMoreModal] = useState(false);
 
@@ -633,9 +642,61 @@ function App() {
     setAuthError('');
   };
 
+  // Mobile / Browser Hardware Back Button & Page Memory Navigation Handler
+  useEffect(() => {
+    if (!window.history.state) {
+      window.history.replaceState({ tab: activeTab, isBase: true }, '');
+    }
+
+    const handlePopState = (e) => {
+      // 1. If any modal is open, close modal only (prevents accidental app exit)
+      if (activeItem || showInwardModal || issuedChallan || showLearnMoreModal || showInwardStatusModal || issuedInwardReceipt || acceptingRequest) {
+        setActiveItem(null);
+        setShowInwardModal(false);
+        setIssuedChallan(null);
+        setShowLearnMoreModal(false);
+        setShowInwardStatusModal(false);
+        setIssuedInwardReceipt(null);
+        setAcceptingRequest(null);
+        return;
+      }
+
+      // 2. If back navigation has a tab, restore it
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+      } else if (currentUser) {
+        // Fallback to primary Home screen
+        const homeTab = currentUser.role === 'admin' ? 'adminOverview' : 'clientHome';
+        setActiveTab(homeTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    activeItem,
+    showInwardModal,
+    issuedChallan,
+    showLearnMoreModal,
+    showInwardStatusModal,
+    issuedInwardReceipt,
+    acceptingRequest,
+    activeTab,
+    currentUser
+  ]);
+
+  // Push browser history state on tab change
+  const navigateToTab = (newTab) => {
+    if (newTab === activeTab) return;
+    window.history.pushState({ tab: newTab }, '');
+    setActiveTab(newTab);
+  };
+
   const handleLogout = () => {
     setCurrentUser(null);
     setActiveTab('portalLogin');
+    localStorage.removeItem('hera_active_tab');
+    localStorage.removeItem('hera_current_user');
     setCart([]);
     setCartStep('review');
   };
@@ -1308,27 +1369,27 @@ function App() {
           </div>
 
           <nav className="header-nav-segmented admin-nav">
-            <button className={`nav-item-btn ${activeTab === 'adminOverview' ? 'active' : ''}`} onClick={() => setActiveTab('adminOverview')}>
+            <button className={`nav-item-btn ${activeTab === 'adminOverview' ? 'active' : ''}`} onClick={() => navigateToTab('adminOverview')}>
               <span className="nav-icon">📊</span>
               <span className="nav-label-desktop">Home</span>
               <span className="nav-label-mobile">Home</span>
             </button>
-            <button className={`nav-item-btn ${activeTab === 'adminInventory' ? 'active' : ''}`} onClick={() => setActiveTab('adminInventory')}>
+            <button className={`nav-item-btn ${activeTab === 'adminInventory' ? 'active' : ''}`} onClick={() => navigateToTab('adminInventory')}>
               <span className="nav-icon">🏢</span>
               <span className="nav-label-desktop">All Stock</span>
               <span className="nav-label-mobile">Stock</span>
             </button>
-            <button className={`nav-item-btn ${activeTab === 'adminIncoming' ? 'active' : ''}`} onClick={() => setActiveTab('adminIncoming')}>
+            <button className={`nav-item-btn ${activeTab === 'adminIncoming' ? 'active' : ''}`} onClick={() => navigateToTab('adminIncoming')}>
               <span className="nav-icon">📥</span>
               <span className="nav-label-desktop">Incoming Goods ({inwardRequests.filter(r => r.status === 'PENDING').length})</span>
               <span className="nav-label-mobile">Inward {inwardRequests.filter(r => r.status === 'PENDING').length > 0 && <span className="nav-mini-badge">{inwardRequests.filter(r => r.status === 'PENDING').length}</span>}</span>
             </button>
-            <button className={`nav-item-btn ${activeTab === 'adminInwardReport' ? 'active' : ''}`} onClick={() => setActiveTab('adminInwardReport')}>
+            <button className={`nav-item-btn ${activeTab === 'adminInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('adminInwardReport')}>
               <span className="nav-icon">📄</span>
               <span className="nav-label-desktop">Monthly Report</span>
               <span className="nav-label-mobile">Report</span>
             </button>
-            <button className={`nav-item-btn ${activeTab === 'adminChallans' ? 'active' : ''}`} onClick={() => setActiveTab('adminChallans')}>
+            <button className={`nav-item-btn ${activeTab === 'adminChallans' ? 'active' : ''}`} onClick={() => navigateToTab('adminChallans')}>
               <span className="nav-icon">🚚</span>
               <span className="nav-label-desktop">Delivery Notes ({challanHistory.length})</span>
               <span className="nav-label-mobile">Notes</span>
@@ -1350,7 +1411,7 @@ function App() {
             <div className="home-content-container">
               {/* Full-width clean hero matching reference image */}
               <WarehouseHeroBanner
-                onManageInventory={() => setActiveTab('adminInventory')}
+                onManageInventory={() => navigateToTab('adminInventory')}
                 onLearnMore={() => setShowLearnMoreModal(true)}
               />
             </div>
@@ -1786,22 +1847,22 @@ function App() {
         </div>
 
         <nav className="header-nav-segmented client-nav">
-          <button className={`nav-item-btn ${activeTab === 'clientHome' ? 'active' : ''}`} onClick={() => setActiveTab('clientHome')}>
+          <button className={`nav-item-btn ${activeTab === 'clientHome' ? 'active' : ''}`} onClick={() => navigateToTab('clientHome')}>
             <span className="nav-icon">📊</span>
             <span className="nav-label-desktop">Home</span>
             <span className="nav-label-mobile">Home</span>
           </button>
-          <button className={`nav-item-btn ${activeTab === 'clientInventory' ? 'active' : ''}`} onClick={() => setActiveTab('clientInventory')}>
+          <button className={`nav-item-btn ${activeTab === 'clientInventory' ? 'active' : ''}`} onClick={() => navigateToTab('clientInventory')}>
             <span className="nav-icon">📦</span>
             <span className="nav-label-desktop">My Stored Items</span>
             <span className="nav-label-mobile">Stock</span>
           </button>
-          <button className={`nav-item-btn ${activeTab === 'clientSendGoods' ? 'active' : ''}`} onClick={() => setActiveTab('clientSendGoods')}>
+          <button className={`nav-item-btn ${activeTab === 'clientSendGoods' ? 'active' : ''}`} onClick={() => navigateToTab('clientSendGoods')}>
             <span className="nav-icon">📥</span>
             <span className="nav-label-desktop">Send Goods to Warehouse</span>
             <span className="nav-label-mobile">Send</span>
           </button>
-          <button className={`nav-item-btn ${activeTab === 'clientInwardReport' ? 'active' : ''}`} onClick={() => setActiveTab('clientInwardReport')}>
+          <button className={`nav-item-btn ${activeTab === 'clientInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('clientInwardReport')}>
             <span className="nav-icon">📄</span>
             <span className="nav-label-desktop">My Stock Report</span>
             <span className="nav-label-mobile">Report</span>
@@ -1815,7 +1876,7 @@ function App() {
             <button className="btn-logout-mini" onClick={handleLogout} title="Sign Out">✕</button>
           </div>
 
-          <button className={`cart-btn header-cart-pill ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => setActiveTab('cart')}>
+          <button className={`cart-btn header-cart-pill ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => navigateToTab('cart')}>
             <span className="cart-label-desktop">Delivery Cart</span>
             <span className="cart-label-mobile">🛒</span>
             <span className="cart-badge">{totalCartCount}</span>
@@ -1829,7 +1890,7 @@ function App() {
           <div className="home-content-container">
             {/* Full-width clean hero matching reference image */}
             <WarehouseHeroBanner
-              onManageInventory={() => setActiveTab('clientInventory')}
+              onManageInventory={() => navigateToTab('clientInventory')}
               onLearnMore={() => setShowLearnMoreModal(true)}
             />
           </div>
@@ -1844,7 +1905,7 @@ function App() {
               <div>
                 <h1 className="page-heading">My Stored Cargo</h1>
               </div>
-              <button className="btn-add-inward-top" onClick={() => setActiveTab('clientSendGoods')}>
+              <button className="btn-add-inward-top" onClick={() => navigateToTab('clientSendGoods')}>
                 + Send New Goods to Warehouse
               </button>
             </div>
@@ -2118,7 +2179,7 @@ function App() {
                 </div>
 
                 <div className="form-bottom-actions">
-                  <button type="button" className="btn-hero-secondary" onClick={() => setActiveTab('clientInventory')}>
+                  <button type="button" className="btn-hero-secondary" onClick={() => navigateToTab('clientInventory')}>
                     &larr; Back to My Items
                   </button>
                   <button type="submit" className="btn-submit-challan">
@@ -2212,7 +2273,7 @@ function App() {
                 <div className="empty-icon">🛒</div>
                 <h3>Your Delivery Cart is Empty</h3>
                 <p>Select items from your inventory to dispatch cargo.</p>
-                <button className="btn-hero-primary" onClick={() => setActiveTab('clientInventory')} style={{ marginTop: '16px' }}>
+                <button className="btn-hero-primary" onClick={() => navigateToTab('clientInventory')} style={{ marginTop: '16px' }}>
                   Browse My Items
                 </button>
               </div>
