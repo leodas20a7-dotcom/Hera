@@ -3372,31 +3372,33 @@ html, body {
     overflow: hidden;
   }
 
-  /* Challan & Inward Modal on Mobile */
+  /* Challan & Inward Modal on Mobile (Auto Zoomed Out to Fit 100% Mobile Screen) */
   .challan-modal-container {
-    max-width: 96vw;
-    width: 96vw;
-    max-height: 92vh;
+    max-width: 98vw;
+    width: 98vw;
+    max-height: 94vh;
     display: flex;
     flex-direction: column;
-    margin: 4px auto;
+    margin: 2px auto;
+    border-radius: 12px;
   }
 
   .challan-toolbar {
-    padding: 6px 8px;
+    padding: 4px 6px;
     flex-wrap: wrap;
     gap: 4px;
+    justify-content: space-between;
   }
 
   .toolbar-tabs {
-    flex: 1;
     display: flex;
     gap: 3px;
+    flex: 1;
     min-width: 0;
   }
 
   .challan-tab-btn {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     padding: 3px 6px;
     white-space: nowrap;
   }
@@ -3408,21 +3410,142 @@ html, body {
   }
 
   .doc-pdf-btn, .doc-print-btn {
-    font-size: 0.68rem;
-    padding: 3px 8px;
+    font-size: 0.65rem;
+    padding: 3px 7px;
+  }
+
+  .doc-close-btn {
+    font-size: 1.1rem;
+    padding: 0 4px;
   }
 
   .challan-printable-sheet {
-    padding: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    flex: 1;
+    padding: 4px;
     width: 100%;
     box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    font-size: 7px;
   }
 
   .challan-template-frame {
-    min-width: 540px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border-width: 1px;
+    box-sizing: border-box;
+  }
+
+  .challan-header-grid {
+    padding: 3px 5px;
+    gap: 4px;
+    border-bottom-width: 1px;
+  }
+
+  .challan-brand-logo-img {
+    height: 20px;
+    max-width: 75px;
+    margin-bottom: 2px;
+  }
+
+  .challan-reg-meta {
+    font-size: 6.5px;
+  }
+
+  .reg-lbl {
+    width: 26px;
+  }
+
+  .company-full-name {
+    font-size: 7.8px;
+    margin-bottom: 1px;
+  }
+
+  .company-hub-address {
+    font-size: 6.2px;
+    line-height: 1.18;
+  }
+
+  .challan-title-bar {
+    padding: 2px;
+    border-bottom-width: 1px;
+  }
+
+  .challan-title-bar h2 {
+    font-size: 7.5px;
+    letter-spacing: 0.3px;
+  }
+
+  .challan-meta-grid {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 4px;
+    padding: 3px 5px;
+    font-size: 6.8px;
+    border-bottom-width: 1px;
+  }
+
+  .meta-row {
+    margin-bottom: 1px;
+    line-height: 1.18;
+  }
+
+  .meta-label {
+    width: 52px;
+    font-size: 6.5px;
+  }
+
+  .meta-value {
+    font-size: 6.5px;
+    word-break: break-word;
+  }
+
+  .challan-items-table {
+    font-size: 6.5px;
+    border-bottom-width: 1px;
+  }
+
+  .challan-items-table th {
+    padding: 2px 3px;
+    font-size: 6.5px;
+    border-bottom-width: 1px;
+  }
+
+  .challan-items-table td {
+    padding: 2px 3px;
+    font-size: 6.5px;
+  }
+
+  .total-label-cell,
+  .total-qty-cell {
+    border-top-width: 1px;
+    padding: 2px 3px;
+    font-size: 6.5px;
+  }
+
+  .challan-footer-grid {
+    padding: 3px 5px 6px 5px;
+    font-size: 6.5px;
+    gap: 4px;
+  }
+
+  .remarks-header-row {
+    font-size: 6.5px;
+  }
+
+  .remarks-text-field {
+    font-size: 6.2px;
+    margin-top: 1px;
+  }
+
+  .signatures-row {
+    margin-top: 12px;
+    gap: 6px;
+  }
+
+  .sig-box {
+    font-size: 6px;
+    min-width: 50px;
+    border-top-width: 1px;
   }
 
   .nav-item-btn {
