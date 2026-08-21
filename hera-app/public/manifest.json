@@ -1,10 +1,10 @@
 {
-  "name": "Hera Logistics - Warehouse Portal",
+  "name": "Hera Logistics - Prime Dry Storage & Warehouse Portal",
   "short_name": "Hera Logistics",
   "description": "Prime Dry Storage, Live Inventory & Consignment Portal",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F1F5F9",
+  "background_color": "#0F172A",
   "theme_color": "#B91C1C",
   "orientation": "portrait-primary",
   "icons": [
@@ -12,6 +12,12 @@
       "src": "/favicon.svg",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/hera-logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]
