@@ -1014,6 +1014,20 @@ function App() {
           rate_type: item.rateType || 'Daily'
         }));
         await supabase.from('delivery_note_items').insert(noteItems);
+
+        // Update remaining stock quantities in Supabase
+        for (const item of cart) {
+          const updatedStock = updatedStocks.find(s => s.id === item.id);
+          if (updatedStock && typeof item.id === 'string' && item.id.length > 10) {
+            await supabase
+              .from('warehouse_stocks')
+              .update({
+                qty: updatedStock.qty,
+                weight_kg: updatedStock.weightKg
+              })
+              .eq('id', item.id);
+          }
+        }
       }
     } catch (err) {
       console.warn('Supabase delivery note sync notice:', err);
