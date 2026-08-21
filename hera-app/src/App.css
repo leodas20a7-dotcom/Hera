@@ -755,19 +755,17 @@ html, body {
   transition: transform 0.2s ease;
 }
 
-/* Tab View Smooth Slide-In & Fade Animation */
+/* Tab View Ultra-Smooth Soft Fade Switch (Zero Jumping) */
 .tab-page-enter {
-  animation: tabFadeSlideIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tabSoftFade 0.15s ease-out forwards;
 }
 
-@keyframes tabFadeSlideIn {
+@keyframes tabSoftFade {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: 0.15;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
