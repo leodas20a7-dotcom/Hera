@@ -758,21 +758,18 @@ html, body {
    ADMIN MASTER DASHBOARD (ZERO SCROLL FIT-TO-SCREEN)
    ========================================================================== */
 .admin-theme {
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden !important;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 .admin-dashboard-screen, .stocks-page-screen, .cart-page-screen, .inward-report-screen {
   flex: 1;
-  padding: 8px 16px;
-  overflow: hidden;
+  padding: 10px 18px 24px 18px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  min-height: 0;
 }
 
 .stocks-container, .cart-container, .report-container {
@@ -781,9 +778,7 @@ html, body {
   flex-direction: column;
   max-width: 100%;
   width: 100%;
-  overflow: hidden;
-  min-height: 0;
-  gap: 8px;
+  gap: 12px;
 }
 
 .dashboard-top-banner {
@@ -925,17 +920,18 @@ html, body {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-card-sm);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   box-shadow: var(--shadow-subtle);
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 /* Stocks Desktop vs Mobile Card Views */
 .stocks-desktop-table {
   display: block;
   width: 100%;
+  overflow-x: auto;
 }
 
 .stocks-mobile-cards {
