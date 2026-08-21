@@ -493,14 +493,14 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 16px;
+  padding: 12px 22px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   width: 100%;
   box-sizing: border-box;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 12px;
 }
 
 .admin-exclusive-header {
@@ -3268,9 +3268,9 @@ html, body {
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    padding: 6px 10px;
-    gap: 6px;
-    row-gap: 6px;
+    padding: 12px 14px 10px 14px;
+    gap: 8px;
+    row-gap: 10px;
     position: sticky;
     top: 0;
     z-index: 50;
