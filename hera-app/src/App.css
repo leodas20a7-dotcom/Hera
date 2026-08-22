@@ -4507,4 +4507,128 @@ html, body {
   background: #E2E8F0;
 }
 
+/* =========================================================================
+   COLUMN & CALCULATION GUIDE MODAL
+   ========================================================================= */
+.column-guide-modal {
+  max-width: 680px;
+  width: 92%;
+  padding: 24px;
+}
+
+.guide-formula-box {
+  background: linear-gradient(135deg, #F0FDF4 0%, #E0F2FE 100%);
+  border: 1.5px solid #BAE6FD;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.formula-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0369A1;
+  margin-bottom: 8px;
+}
+
+.formula-equation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.eq-part {
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.eq-part.in {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.eq-part.out {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.eq-part.close {
+  background: #E0E7FF;
+  color: #4338CA;
+}
+
+.eq-op {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #475569;
+}
+
+.formula-desc {
+  font-size: 0.74rem;
+  color: #334155;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.guide-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.guide-card-item {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.guide-card-item:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08);
+  transform: translateY(-1px);
+}
+
+.guide-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.guide-col-badge {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #0F766E;
+  background: #CCFBF1;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+}
+
+.guide-col-alias {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748B;
+}
+
+.guide-card-text {
+  font-size: 0.74rem;
+  color: #475569;
+  line-height: 1.45;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .guide-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 

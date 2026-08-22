@@ -170,6 +170,7 @@ function App() {
   }, [activeTab]);
 
   const [showLearnMoreModal, setShowLearnMoreModal] = useState(false);
+  const [showColumnGuideModal, setShowColumnGuideModal] = useState(false);
 
   // Live stocks (starts empty, loads from Supabase)
   const [stocks, setStocks] = useState(() => {
@@ -581,11 +582,12 @@ function App() {
 
     const handlePopState = (e) => {
       // 1. If any modal is open, close modal only (prevents accidental app exit)
-      if (activeItem || showInwardModal || issuedChallan || showLearnMoreModal || showInwardStatusModal || showCustomerChallanModal || issuedInwardReceipt || acceptingRequest) {
+      if (activeItem || showInwardModal || issuedChallan || showLearnMoreModal || showColumnGuideModal || showInwardStatusModal || showCustomerChallanModal || issuedInwardReceipt || acceptingRequest) {
         setActiveItem(null);
         setShowInwardModal(false);
         setIssuedChallan(null);
         setShowLearnMoreModal(false);
+        setShowColumnGuideModal(false);
         setShowInwardStatusModal(false);
         setShowCustomerChallanModal(false);
         setIssuedInwardReceipt(null);
@@ -610,6 +612,7 @@ function App() {
     showInwardModal,
     issuedChallan,
     showLearnMoreModal,
+    showColumnGuideModal,
     showInwardStatusModal,
     showCustomerChallanModal,
     issuedInwardReceipt,
@@ -1383,9 +1386,19 @@ function App() {
                 <div>
                   <h1 className="page-heading">All Stored Stock</h1>
                 </div>
-                <button className="btn-add-inward-top" onClick={handleOpenAddInward}>
-                  + Add New Stock
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button 
+                    type="button"
+                    className="btn-status-history-pill" 
+                    onClick={() => setShowColumnGuideModal(true)} 
+                    title="Explain Column Names & Stock Calculations"
+                  >
+                    📖 Column Guide
+                  </button>
+                  <button className="btn-add-inward-top" onClick={handleOpenAddInward}>
+                    + Add New Stock
+                  </button>
+                </div>
               </div>
 
               <div className="table-card">
@@ -1629,9 +1642,19 @@ function App() {
                 <div>
                   <h1 className="page-heading">Monthly Stock Holding Report</h1>
                 </div>
-                <button className="doc-print-btn" onClick={() => window.print()}>
-                  🖨️ Print Report
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button 
+                    type="button"
+                    className="btn-status-history-pill" 
+                    onClick={() => setShowColumnGuideModal(true)} 
+                    title="Explain Column Names & Stock Calculations"
+                  >
+                    📖 Column Guide
+                  </button>
+                  <button className="doc-print-btn" onClick={() => window.print()}>
+                    🖨️ Print Report
+                  </button>
+                </div>
               </div>
 
               <div className="official-report-sheet">
@@ -1821,6 +1844,7 @@ function App() {
         {acceptingRequest && renderAcceptInwardModal()}
         {issuedChallan && renderChallanModal()}
         {showLearnMoreModal && renderLearnMoreModal()}
+        {showColumnGuideModal && renderColumnGuideModal()}
 
         {/* PWA Mobile Web App Install Banner */}
         {renderInstallBanner()}
@@ -1908,9 +1932,19 @@ function App() {
               <div>
                 <h1 className="page-heading">My Stored Cargo</h1>
               </div>
-              <button className="btn-add-inward-top" onClick={() => navigateToTab('clientSendGoods')}>
-                + Send New Goods to Warehouse
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button 
+                  type="button"
+                  className="btn-status-history-pill" 
+                  onClick={() => setShowColumnGuideModal(true)} 
+                  title="Explain Column Names & Stock Calculations"
+                >
+                  📖 Column Guide
+                </button>
+                <button className="btn-add-inward-top" onClick={() => navigateToTab('clientSendGoods')}>
+                  + Send New Goods to Warehouse
+                </button>
+              </div>
             </div>
 
             <div className="table-card dashboard-table-card">
@@ -2199,9 +2233,19 @@ function App() {
               <div>
                 <h1 className="page-heading">My Monthly Stock Report</h1>
               </div>
-              <button className="doc-print-btn" onClick={() => window.print()}>
-                🖨️ Print Report
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  className="btn-status-history-pill" 
+                  onClick={() => setShowColumnGuideModal(true)} 
+                  title="Explain Column Names & Stock Calculations"
+                >
+                  📖 Column Guide
+                </button>
+                <button className="doc-print-btn" onClick={() => window.print()}>
+                  🖨️ Print Report
+                </button>
+              </div>
             </div>
 
             <div className="official-report-sheet">
@@ -2476,6 +2520,7 @@ function App() {
       {showCustomerChallanModal && renderCustomerChallanModal()}
       {issuedChallan && renderChallanModal()}
       {showLearnMoreModal && renderLearnMoreModal()}
+      {showColumnGuideModal && renderColumnGuideModal()}
 
       {/* PWA Mobile Web App Install Banner */}
       {renderInstallBanner()}
@@ -3373,6 +3418,115 @@ function App() {
           <div className="modal-actions" style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" className="btn-hero-secondary" onClick={() => setShowCustomerChallanModal(false)}>
               Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderColumnGuideModal() {
+    return (
+      <div className="modal-backdrop" onClick={() => setShowColumnGuideModal(false)}>
+        <div className="modal-card column-guide-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="dispatch-modal-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>📖</span>
+                <h2 className="modal-title" style={{ textAlign: 'left', margin: 0, fontSize: '1.15rem' }}>
+                  Warehouse Columns & Stock Guide
+                </h2>
+              </div>
+              <p className="modal-sub-clean" style={{ margin: '4px 0 0 0', textAlign: 'left', fontSize: '0.78rem', color: '#64748B' }}>
+                Quick guide explaining every column name, unit, and how stock balances are calculated.
+              </p>
+            </div>
+            <button className="modal-close-icon" onClick={() => setShowColumnGuideModal(false)}>✕</button>
+          </div>
+
+          <div className="guide-content-scroll" style={{ maxHeight: '62vh', overflowY: 'auto', paddingRight: '4px' }}>
+            {/* Calculation Formula Banner */}
+            <div className="guide-formula-box">
+              <div className="formula-title">🧮 How Stock Balance is Calculated</div>
+              <div className="formula-equation">
+                <span className="eq-part in">Total Inwards (331,237 KG)</span>
+                <span className="eq-op">−</span>
+                <span className="eq-part out">Total Dispatched (41,049 KG)</span>
+                <span className="eq-op">=</span>
+                <span className="eq-part close">Net Closing Stock (290,188 KG)</span>
+              </div>
+              <p className="formula-desc">
+                Every time cargo arrives at the warehouse it adds to Inwards. When you dispatch items to buyers (e.g. Global Enterprises), it automatically issues a Delivery Note and deducts from your Available Stock.
+              </p>
+            </div>
+
+            {/* Column Breakdown Cards */}
+            <div className="guide-cards-grid">
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">BILL / GRN NO</span>
+                  <span className="guide-col-alias">Document Number</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>VCH / Doc Number (e.g., 425109834 / VCH-64):</strong> The official purchase voucher number from your supplier (Sun Enterprises / Mahathi Traders) and Hera Goods Receipt Note (GRN). Matches your tax invoice and purchase register.
+                </p>
+              </div>
+
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">INWARD DATE</span>
+                  <span className="guide-col-alias">IN.DATE</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>Date of Arrival (e.g., 10-May):</strong> The exact date your consignment vehicle arrived at Hera Central Hub, underwent quality inspection, and was safely unloaded.
+                </p>
+              </div>
+
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">WAREHOUSE BAY</span>
+                  <span className="guide-col-alias">WH LOCATION</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>Physical Bay Identifier (e.g., SIP-10, SIP-C14, SIP-D3):</strong> The specific pallet rack, sector, and climate-protected bay where your bags are safely stacked for fast retrieval.
+                </p>
+              </div>
+
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">AVAILABLE STOCK</span>
+                  <span className="guide-col-alias">WEIGHT (KG)</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>Primary Trading Unit (Kilograms):</strong> The exact net weight in KG available for sale or dispatch. You can dispatch in precise KG without doing bag conversions.
+                </p>
+              </div>
+
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">LOT & PACKAGING</span>
+                  <span className="guide-col-alias">NO OF BAGS</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>Batch Lot & Bag Count (e.g., LOT-64 / 340 Bags):</strong> Tracks the batch identification lot number along with the physical bag count (standard 50KG packaging units).
+                </p>
+              </div>
+
+              <div className="guide-card-item">
+                <div className="guide-card-header">
+                  <span className="guide-col-badge">DELIVERY NOTES</span>
+                  <span className="guide-col-alias">Gate Pass / DC</span>
+                </div>
+                <p className="guide-card-text">
+                  <strong>Outbound Delivery Challan (e.g., LKE-250/26-27):</strong> Official dispatch document issued when goods leave the warehouse, complete with lorry vehicle number, recipient buyer name, and digital QR seal.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-hero-primary" onClick={() => setShowColumnGuideModal(false)}>
+              Got It, Thanks!
             </button>
           </div>
         </div>
