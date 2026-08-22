@@ -1637,75 +1637,86 @@ function App() {
               <div className="official-report-sheet">
                 <div className="report-header-flex">
                   <div className="rep-top-meta-row">
-                    <span className="rep-gst">GSTIN: 33AAFCH8632K1ZE</span>
-                    <span className="rep-contact">📞 Helpline: 96622 96633</span>
+                    <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
+                    <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
                   </div>
                   <div className="rep-center-brand">
                     <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
-                    <h2 className="rep-company-title">HERA LOGISTICS PVT.LTD.,</h2>
-                    <p className="rep-tagline">Logistics Simplified</p>
+                    <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
+                    <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
                     <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                   </div>
                 </div>
 
-                <div className="rep-client-box">
-                  <strong>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</strong>
-                  <div>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
+                <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
+
+                <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
+                  <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
+                  <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
+                  <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
+                    CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
+                  </div>
                 </div>
 
-                <div className="rep-report-title">STOCK REPORT: 31.05.2026</div>
+                <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
+                  STOCK REPORT: 31.05.2026
+                </div>
 
                 <table className="rep-table-exact">
                   <thead>
-                    <tr>
-                      <th style={{ width: '60px' }}>S.NO</th>
-                      <th>INWARD DATE</th>
-                      <th>DOCUMENT NUMBER</th>
-                      <th>BAY LOCATION</th>
-                      <th style={{ textAlign: 'right' }}>WEIGHT (KG)</th>
-                      <th style={{ textAlign: 'right' }}>NO OF BAGS</th>
+                    <tr style={{ background: '#334155', color: '#ffffff' }}>
+                      <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
+                      <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
+                      <th style={{ textAlign: 'center' }}>WH LOCATION</th>
+                      <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
+                      <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stocks.map((item, idx) => (
                       <tr key={idx}>
                         <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                        <td>{item.inDate}</td>
-                        <td style={{ fontWeight: '600' }}>{item.docNo}</td>
-                        <td style={{ fontWeight: '600', color: '#b91c1c' }}>{item.whLocation}</td>
+                        <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
                         <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.count || (Math.round((item.weightKg || item.qty) / 50) + ' Bags')}</td>
-                      </tr>
-                    ))}
-                    {Array.from({ length: Math.max(0, 7 - stocks.length) }).map((_, i) => (
-                      <tr key={`blank-admin-${i}`} className="blank-rep-row">
-                        <td style={{ textAlign: 'center' }}>&nbsp;</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="rep-total-row">
-                      <td colSpan="4" style={{ textAlign: 'right', fontWeight: 'bold' }}>Total</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{totalWarehouseWeight.toLocaleString()}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{totalWarehouseBags.toLocaleString()}</td>
+                    <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
+                      <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                        {stocks.reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                        {stocks.reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
 
-                <div className="rep-sheet-footer">
-                  <div className="rep-footer-left">
-                    <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
-                    <div className="rep-timestamp-note">Report As On: 31-May-2026 • Thoothukudi Central Hub</div>
+                {/* Official Round Stamp & Authorized Seal */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
+                  <div className="rep-stamp-badge">
+                    <div className="stamp-circle-outer">
+                      <div className="stamp-circle-inner">
+                        <div className="stamp-arc-top">HERA LOGISTICS PVT. LTD.</div>
+                        <div className="stamp-center-core">
+                          <div className="stamp-india">INDIA</div>
+                          <div className="stamp-sign-cursive">Debasish</div>
+                        </div>
+                        <div className="stamp-stars">★ ★ ★</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="rep-footer-right">
+
+                  <div className="rep-footer-right" style={{ textAlign: 'right' }}>
                     <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
-                    <div className="rep-sign-rule"></div>
-                    <div className="rep-sign-label">Warehouse Authorized Signatory</div>
+                    <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
+                    <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
                   </div>
                 </div>
               </div>
@@ -2196,79 +2207,86 @@ function App() {
             <div className="official-report-sheet">
               <div className="report-header-flex">
                 <div className="rep-top-meta-row">
-                  <span className="rep-gst">GSTIN: 33AAFCH8632K1ZE</span>
-                  <span className="rep-contact">📞 Helpline: 96622 96633</span>
+                  <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
+                  <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
                 </div>
                 <div className="rep-center-brand">
                   <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
-                  <h2 className="rep-company-title">HERA LOGISTICS PVT.LTD.,</h2>
-                  <p className="rep-tagline">Logistics Simplified</p>
+                  <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
+                  <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
                   <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                 </div>
               </div>
 
-              <div className="rep-client-box">
-                <strong>{currentUser.company || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}</strong>
-                <div>{currentUser.address || 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92'}</div>
+              <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
+
+              <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
+                <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
+                <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
+                <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
+                  CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
+                </div>
               </div>
 
-              <div className="rep-report-title">STOCK REPORT: 31.05.2026</div>
+              <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
+                STOCK REPORT: 31.05.2026
+              </div>
 
               <table className="rep-table-exact">
                 <thead>
-                  <tr>
-                    <th style={{ width: '60px' }}>S.NO</th>
-                    <th>INWARD DATE</th>
-                    <th>DOCUMENT NUMBER</th>
-                    <th>BAY LOCATION</th>
-                    <th style={{ textAlign: 'right' }}>WEIGHT (KG)</th>
-                    <th style={{ textAlign: 'right' }}>NO OF BAGS</th>
+                  <tr style={{ background: '#334155', color: '#ffffff' }}>
+                    <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
+                    <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
+                    <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
+                    <th style={{ textAlign: 'center' }}>WH LOCATION</th>
+                    <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
+                    <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).map((item, idx) => (
                     <tr key={idx}>
                       <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                      <td>{item.inDate}</td>
-                      <td style={{ fontWeight: '600' }}>{item.docNo}</td>
-                      <td style={{ fontWeight: '600', color: '#b91c1c' }}>{item.whLocation}</td>
+                      <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
                       <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.count || (Math.round((item.weightKg || item.qty) / 50) + ' Bags')}</td>
-                    </tr>
-                  ))}
-                  {Array.from({ length: Math.max(0, 7 - stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length) }).map((_, i) => (
-                    <tr key={`blank-client-${i}`} className="blank-rep-row">
-                      <td style={{ textAlign: 'center' }}>&nbsp;</td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
+                      <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="rep-total-row">
-                    <td colSpan="4" style={{ textAlign: 'right', fontWeight: 'bold' }}>Total</td>
+                  <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
                     <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
                       {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + Math.round((i.weightKg || i.qty || 0) / 50), 0).toLocaleString()}
+                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
               </table>
 
-              <div className="rep-sheet-footer">
-                <div className="rep-footer-left">
-                  <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
-                  <div className="rep-timestamp-note">Report As On: 31-May-2026 • Thoothukudi Central Hub</div>
+              {/* Official Round Stamp & Authorized Seal */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
+                <div className="rep-stamp-badge">
+                  <div className="stamp-circle-outer">
+                    <div className="stamp-circle-inner">
+                      <div className="stamp-arc-top">HERA LOGISTICS PVT. LTD.</div>
+                      <div className="stamp-center-core">
+                        <div className="stamp-india">INDIA</div>
+                        <div className="stamp-sign-cursive">Debasish</div>
+                      </div>
+                      <div className="stamp-stars">★ ★ ★</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="rep-footer-right">
+
+                <div className="rep-footer-right" style={{ textAlign: 'right' }}>
                   <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
-                  <div className="rep-sign-rule"></div>
-                  <div className="rep-sign-label">Warehouse Authorized Signatory</div>
+                  <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
+                  <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
                 </div>
               </div>
             </div>
