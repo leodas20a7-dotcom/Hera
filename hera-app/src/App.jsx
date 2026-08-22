@@ -1721,18 +1721,12 @@ function App() {
                   </tfoot>
                 </table>
 
-                {/* Official Round Stamp & Authorized Seal */}
+                {/* Official Signatory Footer */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
-                  <div className="rep-stamp-badge">
-                    <div className="stamp-circle-outer">
-                      <div className="stamp-circle-inner">
-                        <div className="stamp-arc-top">HERA LOGISTICS PVT. LTD.</div>
-                        <div className="stamp-center-core">
-                          <div className="stamp-india">INDIA</div>
-                          <div className="stamp-sign-cursive">Debasish</div>
-                        </div>
-                        <div className="stamp-stars">★ ★ ★</div>
-                      </div>
+                  <div className="rep-footer-left">
+                    <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                    <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
+                      Thoothukudi Central Hub • Hera Logistics Official Ledger
                     </div>
                   </div>
 
@@ -2312,18 +2306,12 @@ function App() {
                 </tfoot>
               </table>
 
-              {/* Official Round Stamp & Authorized Seal */}
+              {/* Official Signatory Footer */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
-                <div className="rep-stamp-badge">
-                  <div className="stamp-circle-outer">
-                    <div className="stamp-circle-inner">
-                      <div className="stamp-arc-top">HERA LOGISTICS PVT. LTD.</div>
-                      <div className="stamp-center-core">
-                        <div className="stamp-india">INDIA</div>
-                        <div className="stamp-sign-cursive">Debasish</div>
-                      </div>
-                      <div className="stamp-stars">★ ★ ★</div>
-                    </div>
+                <div className="rep-footer-left">
+                  <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                  <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
+                    Thoothukudi Central Hub • Hera Logistics Official Ledger
                   </div>
                 </div>
 
