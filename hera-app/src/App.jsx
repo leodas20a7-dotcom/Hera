@@ -2271,7 +2271,7 @@ function App() {
                   >
                     <span>🚚 Delivery Note History</span>
                     <span className="cart-badge">
-                      {challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length}
+                      {challanHistory.length}
                     </span>
                   </button>
                 </div>
@@ -2299,7 +2299,7 @@ function App() {
                         >
                           <span>🚚 Delivery Notes</span>
                           <span className="cart-badge">
-                            {challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length}
+                            {challanHistory.length}
                           </span>
                         </button>
                         <span className="total-items-badge">
