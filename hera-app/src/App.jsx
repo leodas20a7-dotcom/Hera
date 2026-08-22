@@ -5,161 +5,8 @@ import heraLogo from './assets/HERA LOGO.jpeg';
 import heraWarehouseImg from './assets/hera_warehouse_hero.jpg';
 import { supabase } from './supabaseClient';
 
-// Pre-seeded multi-commodity dry warehouse inventory
-const INITIAL_STOCKS = [
-  {
-    id: 1,
-    docNo: '425109834',
-    grnNo: 'GRN/0001340/26-27',
-    inDate: '10-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Raw Cashew & Grains',
-    category: 'Dry Goods',
-    brand: 'AGRO-PREMIUM',
-    variety: 'GRADE-A',
-    whLocation: 'SIP-10',
-    lotNo: 'LOT-42510',
-    count: '50KG BAGS',
-    rateType: 'Daily',
-    qty: 340,
-    unit: 'BAGS',
-    weightKg: 27516,
-    tagClass: 'tag-blue'
-  },
-  {
-    id: 2,
-    docNo: '425109834',
-    grnNo: 'GRN/0001340/26-27',
-    inDate: '11-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Pulses & Legumes',
-    category: 'Dry Goods',
-    brand: 'GLOBAL HARVEST',
-    variety: 'SPLIT YELLOW',
-    whLocation: 'SIP-C14',
-    lotNo: 'LOT-42511',
-    count: '50KG BAGS',
-    rateType: 'Daily',
-    qty: 320,
-    unit: 'BAGS',
-    weightKg: 25600,
-    tagClass: 'tag-purple'
-  },
-  {
-    id: 3,
-    docNo: '425109834',
-    grnNo: 'GRN/0001340/26-27',
-    inDate: '13-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Industrial Spices & Seeds',
-    category: 'Dry Goods',
-    brand: 'SPICE-PORT',
-    variety: 'WHOLE SEED',
-    whLocation: 'SIP-C15',
-    lotNo: 'LOT-42513',
-    count: '50KG BAGS',
-    rateType: 'Daily',
-    qty: 360,
-    unit: 'BAGS',
-    weightKg: 28600,
-    tagClass: 'tag-cyan'
-  },
-  {
-    id: 4,
-    docNo: '426815209',
-    grnNo: 'GRN/0001341/26-27',
-    inDate: '15-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Processed Agro Commodities',
-    category: 'Dry Goods',
-    brand: 'SUN-CROP',
-    variety: 'DRIED SORTED',
-    whLocation: 'SIP-C25',
-    lotNo: 'LOT-42681',
-    count: '50KG BAGS',
-    rateType: 'Daily',
-    qty: 250,
-    unit: 'BAGS',
-    weightKg: 19802,
-    tagClass: 'tag-orange'
-  },
-  {
-    id: 5,
-    docNo: '427931623',
-    grnNo: 'GRN/0001342/26-27',
-    inDate: '16-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Export Grade Cartons',
-    category: 'Packaged Cargo',
-    brand: 'TIGER-BLACK',
-    variety: 'ROYAL GALA',
-    whLocation: 'SIP-M1',
-    lotNo: '9738282',
-    count: '135PG',
-    rateType: 'Daily',
-    qty: 36,
-    unit: 'BOX',
-    weightKg: 720,
-    tagClass: 'tag-purple'
-  },
-  {
-    id: 6,
-    docNo: '427931623',
-    grnNo: 'GRN/0001342/26-27',
-    inDate: '16-May-2026',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Commercial Packaged Goods',
-    category: 'Packaged Cargo',
-    brand: 'CAJ',
-    variety: 'ROYAL GALA',
-    whLocation: 'SIP-M2',
-    lotNo: '9738282',
-    count: '120VP',
-    rateType: 'Daily',
-    qty: 92,
-    unit: 'BOX',
-    weightKg: 1840,
-    tagClass: 'tag-cyan'
-  },
-  {
-    id: 7,
-    docNo: '428104952',
-    grnNo: 'GRN/0001345/26-27',
-    inDate: '19-May-2026',
-    clientName: 'GLOBAL COMMODITIES TRADERS LTD',
-    product: 'Premium Packaged Cartons',
-    category: 'Packaged Cargo',
-    brand: 'AOZORA-BLUE',
-    variety: 'ROYAL GALA',
-    whLocation: 'SIP-S1',
-    lotNo: '1322-ANN',
-    count: '120XF',
-    rateType: 'Daily',
-    qty: 54,
-    unit: 'BOX',
-    weightKg: 1080,
-    tagClass: 'tag-blue'
-  },
-  {
-    id: 8,
-    docNo: '429384710',
-    grnNo: 'GRN/0001345/26-27',
-    inDate: '21-May-2026',
-    clientName: 'SOUTH COAST AGRO IMPORTS',
-    product: 'Dry Industrial Cargo',
-    category: 'Dry Goods',
-    brand: 'IND-CARGO',
-    variety: 'COMMERCIAL',
-    whLocation: 'SIP-D1',
-    lotNo: 'LOT-42938',
-    count: '50KG BAGS',
-    rateType: 'Daily',
-    qty: 330,
-    unit: 'BAGS',
-    weightKg: 26500,
-    tagClass: 'tag-green'
-  }
-];
+// Initial empty stocks (Driven 100% by live Supabase realtime data)
+const INITIAL_STOCKS = [];
 
 // Single explicit Admin Credential
 const ADMIN_CREDENTIALS = {
@@ -181,27 +28,8 @@ const DEMO_CLIENT = {
   phone: '9585543555'
 };
 
-// Demo Initial Inward Consignment Requests
-const INITIAL_INWARD_REQUESTS = [
-  {
-    id: 1,
-    inwardNo: 'INW/0002841/26-27',
-    clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-    product: 'Whole Cashew Kernels',
-    category: 'Cashew',
-    brand: 'CAJ',
-    variety: 'GRADE-W320',
-    qty: 300,
-    unit: 'BAGS',
-    weightKg: 24000,
-    vehicleNo: 'TN22CY7236',
-    driverPhone: '9585543555',
-    expectedDate: '21-Aug-2026',
-    docNo: 'INV/LK/2026/894',
-    status: 'PENDING',
-    createdAt: '20-Aug-2026'
-  }
-];
+// Initial empty Inward Consignment Requests (Driven 100% by live Supabase realtime data)
+const INITIAL_INWARD_REQUESTS = [];
 
 // Prime Dry Storage Hero Banner Component matching reference design
 function WarehouseHeroBanner({ onManageInventory, onLearnMore }) {
@@ -343,22 +171,22 @@ function App() {
 
   const [showLearnMoreModal, setShowLearnMoreModal] = useState(false);
 
-  // Persisted stocks
+  // Live stocks (starts empty, loads from Supabase)
   const [stocks, setStocks] = useState(() => {
     const saved = localStorage.getItem('hera_stocks');
-    return saved ? JSON.parse(saved) : INITIAL_STOCKS;
+    return saved ? JSON.parse(saved) : [];
   });
 
-  // Persisted challan history
+  // Live challan history
   const [challanHistory, setChallanHistory] = useState(() => {
     const saved = localStorage.getItem('hera_challans');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Persisted Incoming / Inward Requests from Clients
+  // Live Incoming / Inward Requests from Clients
   const [inwardRequests, setInwardRequests] = useState(() => {
     const saved = localStorage.getItem('hera_inward_requests');
-    return saved ? JSON.parse(saved) : INITIAL_INWARD_REQUESTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Client Inward Consignment Advice Form
@@ -502,16 +330,16 @@ function App() {
     localStorage.setItem('hera_install_dismissed', 'true');
   };
 
-  // Live Supabase Sync
+  // Live Supabase Sync & Realtime Subscription
   useEffect(() => {
     async function loadSupabaseData() {
       try {
-        const { data: stockData, error: stockErr } = await supabase
+        const { data: stockData } = await supabase
           .from('warehouse_stocks')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (stockData && stockData.length > 0) {
+        if (stockData) {
           const mapped = stockData.map(s => ({
             id: s.id,
             docNo: s.doc_no,
@@ -534,12 +362,12 @@ function App() {
           setStocks(mapped);
         }
 
-        const { data: challanData, error: challanErr } = await supabase
+        const { data: challanData } = await supabase
           .from('delivery_notes')
           .select('*, delivery_note_items(*)')
           .order('created_at', { ascending: false });
 
-        if (challanData && challanData.length > 0) {
+        if (challanData) {
           const mappedChallans = challanData.map(c => ({
             id: c.id,
             dcNo: c.dc_no,
@@ -574,7 +402,7 @@ function App() {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (inwardData && inwardData.length > 0) {
+        if (inwardData) {
           const mappedInwards = inwardData.map(r => ({
             id: r.id,
             inwardNo: r.inward_no,
@@ -602,7 +430,26 @@ function App() {
         console.warn('Supabase sync notice:', err);
       }
     }
+
     loadSupabaseData();
+
+    // Supabase Realtime Subscription Channel
+    const channel = supabase
+      .channel('hera-realtime-db-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_stocks' }, () => {
+        loadSupabaseData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inward_requests' }, () => {
+        loadSupabaseData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, () => {
+        loadSupabaseData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Synchronize localStorage
