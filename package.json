@@ -1,16 +1,14 @@
 {
-  "name": "hera",
+  "name": "hera-root",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "script.js",
+  "workspaces": [
+    "hera-app"
+  ],
   "scripts": {
     "dev": "npm --prefix hera-app run dev",
     "build": "npm --prefix hera-app run build",
     "preview": "npm --prefix hera-app run preview",
     "lint": "npm --prefix hera-app run lint"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  }
 }
