@@ -1526,10 +1526,11 @@ function App() {
                               <td><strong className="client-party-name">{req.clientName}</strong></td>
                               <td>
                                 <span className="product-title-txt">{req.product}</span>
-                                <div className="brand-sub-badge">
-                                  <span className="brand-pill tag-blue">{req.brand}</span>
-                                  <span className="variety-txt">{req.variety}</span>
-                                </div>
+                                {req.brand && (
+                                  <div className="brand-sub-badge">
+                                    <span className="brand-pill tag-blue">{req.brand}</span>
+                                  </div>
+                                )}
                               </td>
                               <td>
                                 <span className="wh-bay-badge">{req.vehicleNo}</span>
@@ -1945,10 +1946,11 @@ function App() {
                           <td className="indate-cell">{item.inDate}</td>
                           <td>
                             <strong className="product-title-txt">{item.product}</strong>
-                            <div className="brand-sub-badge">
-                              <span className={`brand-pill ${item.tagClass}`}>{item.brand}</span>
-                              <span className="variety-txt">{item.variety}</span>
-                            </div>
+                            {item.brand && (
+                              <div className="brand-sub-badge">
+                                <span className={`brand-pill ${item.tagClass}`}>{item.brand}</span>
+                              </div>
+                            )}
                           </td>
                           <td>
                             <span className="wh-bay-badge">{item.whLocation}</span>
@@ -1978,10 +1980,11 @@ function App() {
                       <div className="mobile-card-top">
                         <div className="mobile-card-product">
                           <span className="mobile-product-name">{item.product}</span>
-                          <div className="brand-sub-badge" style={{ marginTop: '2px' }}>
-                            <span className={`brand-pill ${item.tagClass}`}>{item.brand}</span>
-                            <span className="variety-txt">{item.variety}</span>
-                          </div>
+                          {item.brand && (
+                            <div className="brand-sub-badge" style={{ marginTop: '2px' }}>
+                              <span className={`brand-pill ${item.tagClass}`}>{item.brand}</span>
+                            </div>
+                          )}
                         </div>
                         <span className="wh-bay-badge">{item.whLocation}</span>
                       </div>
