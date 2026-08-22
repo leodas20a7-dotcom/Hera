@@ -1141,8 +1141,8 @@ function App() {
   });
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.selectedQty, 0);
-  const totalWarehouseBags = stocks.reduce((sum, item) => sum + (item.unit === 'BAGS' ? item.qty : 0), 0);
-  const totalWarehouseWeight = stocks.reduce((sum, item) => sum + (item.weightKg || 0), 0);
+  const totalWarehouseBags = stocks.reduce((sum, item) => sum + Math.round((item.weightKg || item.qty || 0) / 50), 0);
+  const totalWarehouseWeight = stocks.reduce((sum, item) => sum + (item.weightKg || item.qty || 0), 0);
   const uniqueBaysCount = new Set(stocks.map(s => s.whLocation)).size;
 
   // =========================================================================
@@ -1667,17 +1667,17 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stocks.filter(s => s.unit === 'BAGS').map((item, idx) => (
+                    {stocks.map((item, idx) => (
                       <tr key={idx}>
                         <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                         <td>{item.inDate}</td>
                         <td style={{ fontWeight: '600' }}>{item.docNo}</td>
                         <td style={{ fontWeight: '600', color: '#b91c1c' }}>{item.whLocation}</td>
-                        <td style={{ textAlign: 'right' }}>{item.weightKg?.toLocaleString()}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qty}</td>
+                        <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.count || (Math.round((item.weightKg || item.qty) / 50) + ' Bags')}</td>
                       </tr>
                     ))}
-                    {Array.from({ length: Math.max(0, 7 - stocks.filter(s => s.unit === 'BAGS').length) }).map((_, i) => (
+                    {Array.from({ length: Math.max(0, 7 - stocks.length) }).map((_, i) => (
                       <tr key={`blank-admin-${i}`} className="blank-rep-row">
                         <td style={{ textAlign: 'center' }}>&nbsp;</td>
                         <td></td>
@@ -2226,17 +2226,17 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stocks.filter(s => s.unit === 'BAGS' && (!currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))).map((item, idx) => (
+                  {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).map((item, idx) => (
                     <tr key={idx}>
                       <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                       <td>{item.inDate}</td>
                       <td style={{ fontWeight: '600' }}>{item.docNo}</td>
                       <td style={{ fontWeight: '600', color: '#b91c1c' }}>{item.whLocation}</td>
-                      <td style={{ textAlign: 'right' }}>{item.weightKg?.toLocaleString()}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.count || (Math.round((item.weightKg || item.qty) / 50) + ' Bags')}</td>
                     </tr>
                   ))}
-                  {Array.from({ length: Math.max(0, 7 - stocks.filter(s => s.unit === 'BAGS' && (!currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))).length) }).map((_, i) => (
+                  {Array.from({ length: Math.max(0, 7 - stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length) }).map((_, i) => (
                     <tr key={`blank-client-${i}`} className="blank-rep-row">
                       <td style={{ textAlign: 'center' }}>&nbsp;</td>
                       <td></td>
@@ -2251,10 +2251,10 @@ function App() {
                   <tr className="rep-total-row">
                     <td colSpan="4" style={{ textAlign: 'right', fontWeight: 'bold' }}>Total</td>
                     <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      {stocks.filter(s => s.unit === 'BAGS' && (!currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))).reduce((sum, i) => sum + (i.weightKg || 0), 0).toLocaleString()}
+                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      {stocks.filter(s => s.unit === 'BAGS' && (!currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))).reduce((sum, i) => sum + i.qty, 0).toLocaleString()}
+                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + Math.round((i.weightKg || i.qty || 0) / 50), 0).toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
