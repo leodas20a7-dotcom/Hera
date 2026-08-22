@@ -330,107 +330,121 @@ function App() {
     localStorage.setItem('hera_install_dismissed', 'true');
   };
 
+  // Reusable Live Supabase Sync function
+  const loadSupabaseData = async () => {
+    try {
+      const { data: stockData } = await supabase
+        .from('warehouse_stocks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (stockData) {
+        const mapped = stockData.map(s => ({
+          id: s.id,
+          docNo: s.doc_no,
+          grnNo: s.grn_no,
+          inDate: s.in_date,
+          clientName: s.client_name,
+          product: s.product,
+          category: s.category || 'Dry Goods',
+          brand: s.brand || 'CAJ',
+          variety: s.variety || s.product,
+          whLocation: s.wh_location,
+          lotNo: s.lot_no,
+          count: s.count || '50KG BAGS',
+          rateType: s.rate_type || 'Daily',
+          qty: Number(s.qty),
+          unit: s.unit || 'BAGS',
+          weightKg: Number(s.weight_kg) || 0,
+          tagClass: 'tag-blue'
+        }));
+        setStocks(mapped);
+      }
+
+      const { data: challanData } = await supabase
+        .from('delivery_notes')
+        .select('*, delivery_note_items(*)')
+        .order('created_at', { ascending: false });
+
+      if (challanData) {
+        const mappedChallans = challanData.map(c => ({
+          id: c.id,
+          dcNo: c.dc_no,
+          dcDate: c.dc_date,
+          gateInNo: c.gate_in_no,
+          customerName: c.customer_name,
+          address: c.address,
+          contactPerson: c.contact_person,
+          contactNo: c.contact_no,
+          destination: c.destination,
+          vehicleNo: c.vehicle_no,
+          preparedBy: c.prepared_by,
+          totalQty: Number(c.total_qty),
+          items: (c.delivery_note_items && c.delivery_note_items.length > 0)
+            ? c.delivery_note_items.map(i => ({
+                grnNo: i.grn_no || 'GRN/0001345/26-27',
+                brand: i.brand || 'Sun Enterprises',
+                product: i.product || 'Raw Cashew Nuts',
+                variety: i.variety || 'RAW-CASHEW',
+                lotNo: i.lot_no || 'LOT-CASHEW',
+                count: i.count || '50KG BAGS',
+                whLocation: i.wh_location || 'SIP-B02',
+                selectedQty: Number(i.dispatched_qty) || Number(c.total_qty),
+                unit: i.unit || 'BAGS',
+                rateType: i.rate_type || 'Daily'
+              }))
+            : [{
+                grnNo: 'GRN/0001345/26-27',
+                brand: 'Sun Enterprises',
+                product: 'Raw Cashew Nuts',
+                variety: 'RAW-CASHEW',
+                lotNo: 'LOT-CASHEW',
+                count: '50KG BAGS',
+                whLocation: 'SIP-B02',
+                selectedQty: Number(c.total_qty),
+                unit: 'BAGS',
+                rateType: 'Daily'
+              }]
+        }));
+        setChallanHistory(mappedChallans);
+      }
+
+      const { data: inwardData } = await supabase
+        .from('inward_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (inwardData) {
+        const mappedInwards = inwardData.map(r => ({
+          id: r.id,
+          inwardNo: r.inward_no,
+          clientName: r.client_name,
+          product: r.product,
+          category: r.category || 'General',
+          brand: r.brand || 'CAJ',
+          variety: r.variety || 'STANDARD',
+          qty: Number(r.qty),
+          unit: r.unit || 'BAGS',
+          weightKg: Number(r.weight_kg) || 0,
+          vehicleNo: r.vehicle_no,
+          driverPhone: r.driver_phone,
+          expectedDate: r.expected_date,
+          docNo: r.doc_no,
+          remarks: r.remarks,
+          status: r.status || 'PENDING',
+          grnNo: r.grn_no,
+          whLocation: r.wh_location,
+          createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '20-Aug-2026'
+        }));
+        setInwardRequests(mappedInwards);
+      }
+    } catch (err) {
+      console.warn('Supabase sync notice:', err);
+    }
+  };
+
   // Live Supabase Sync & Realtime Subscription
   useEffect(() => {
-    async function loadSupabaseData() {
-      try {
-        const { data: stockData } = await supabase
-          .from('warehouse_stocks')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (stockData) {
-          const mapped = stockData.map(s => ({
-            id: s.id,
-            docNo: s.doc_no,
-            grnNo: s.grn_no,
-            inDate: s.in_date,
-            clientName: s.client_name,
-            product: s.product,
-            category: s.category || 'Dry Goods',
-            brand: s.brand || 'CAJ',
-            variety: s.variety || s.product,
-            whLocation: s.wh_location,
-            lotNo: s.lot_no,
-            count: s.count || '50KG BAGS',
-            rateType: s.rate_type || 'Daily',
-            qty: Number(s.qty),
-            unit: s.unit || 'BAGS',
-            weightKg: Number(s.weight_kg) || 0,
-            tagClass: 'tag-blue'
-          }));
-          setStocks(mapped);
-        }
-
-        const { data: challanData } = await supabase
-          .from('delivery_notes')
-          .select('*, delivery_note_items(*)')
-          .order('created_at', { ascending: false });
-
-        if (challanData) {
-          const mappedChallans = challanData.map(c => ({
-            id: c.id,
-            dcNo: c.dc_no,
-            dcDate: c.dc_date,
-            gateInNo: c.gate_in_no,
-            customerName: c.customer_name,
-            address: c.address,
-            contactPerson: c.contact_person,
-            contactNo: c.contact_no,
-            destination: c.destination,
-            vehicleNo: c.vehicle_no,
-            preparedBy: c.prepared_by,
-            totalQty: Number(c.total_qty),
-            items: (c.delivery_note_items || []).map(i => ({
-              grnNo: i.grn_no,
-              brand: i.brand,
-              product: i.product,
-              variety: i.variety,
-              lotNo: i.lot_no,
-              count: i.count,
-              whLocation: i.wh_location,
-              selectedQty: Number(i.dispatched_qty),
-              unit: i.unit,
-              rateType: i.rate_type
-            }))
-          }));
-          setChallanHistory(mappedChallans);
-        }
-
-        const { data: inwardData } = await supabase
-          .from('inward_requests')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (inwardData) {
-          const mappedInwards = inwardData.map(r => ({
-            id: r.id,
-            inwardNo: r.inward_no,
-            clientName: r.client_name,
-            product: r.product,
-            category: r.category || 'General',
-            brand: r.brand || 'CAJ',
-            variety: r.variety || 'STANDARD',
-            qty: Number(r.qty),
-            unit: r.unit || 'BAGS',
-            weightKg: Number(r.weight_kg) || 0,
-            vehicleNo: r.vehicle_no,
-            driverPhone: r.driver_phone,
-            expectedDate: r.expected_date,
-            docNo: r.doc_no,
-            remarks: r.remarks,
-            status: r.status || 'PENDING',
-            grnNo: r.grn_no,
-            whLocation: r.wh_location,
-            createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '20-Aug-2026'
-          }));
-          setInwardRequests(mappedInwards);
-        }
-      } catch (err) {
-        console.warn('Supabase sync notice:', err);
-      }
-    }
-
     loadSupabaseData();
 
     // Supabase Realtime Subscription Channel
@@ -451,6 +465,13 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Fetch when delivery note modal opens
+  useEffect(() => {
+    if (showCustomerChallanModal) {
+      loadSupabaseData();
+    }
+  }, [showCustomerChallanModal]);
 
   // Synchronize localStorage
   useEffect(() => {
@@ -3218,7 +3239,17 @@ function App() {
                 Issued outbound delivery notes & warehouse gate pass history
               </p>
             </div>
-            <button className="modal-close-icon" onClick={() => setShowCustomerChallanModal(false)}>✕</button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn-status-history-pill"
+                onClick={loadSupabaseData}
+                style={{ padding: '4px 10px', fontSize: '0.74rem' }}
+              >
+                🔄 Refresh
+              </button>
+              <button className="modal-close-icon" onClick={() => setShowCustomerChallanModal(false)}>✕</button>
+            </div>
           </div>
 
           {myChallans.length === 0 ? (
