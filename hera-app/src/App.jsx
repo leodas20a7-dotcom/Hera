@@ -3207,7 +3207,7 @@ function App() {
   }
 
   function renderCustomerChallanModal() {
-    const myChallans = challanHistory.filter(c => !currentUser.company || c.customerName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)));
+    const myChallans = challanHistory;
     return (
       <div className="modal-backdrop" onClick={() => setShowCustomerChallanModal(false)}>
         <div className="modal-card status-history-modal" onClick={(e) => e.stopPropagation()}>
