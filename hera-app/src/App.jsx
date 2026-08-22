@@ -1399,9 +1399,8 @@ function App() {
                         <th>Customer</th>
                         <th>Item Name</th>
                         <th>Bay</th>
-                        <th>Lot & Bags</th>
-                        <th style={{ textAlign: 'right' }}>Available Qty</th>
-                        <th style={{ textAlign: 'right' }}>Weight (KG)</th>
+                        <th>Lot / Pkg</th>
+                        <th style={{ textAlign: 'right' }}>Available Stock (KG)</th>
                         <th style={{ textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
@@ -1416,9 +1415,13 @@ function App() {
                           <td><strong>{item.clientName}</strong></td>
                           <td>{item.product}</td>
                           <td><span className="wh-bay-badge">{item.whLocation}</span></td>
-                          <td>{item.lotNo} ({item.count})</td>
-                          <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.qty} {item.unit}</td>
-                          <td style={{ textAlign: 'right', color: '#0f766e' }}>{item.weightKg?.toLocaleString()} KG</td>
+                          <td>
+                            <div className="lot-txt">{item.lotNo}</div>
+                            <div className="count-txt">{item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: '800', color: '#0f766e', fontSize: '0.92rem' }}>
+                            {item.qty ? item.qty.toLocaleString() + ' KG' : '0 KG'}
+                          </td>
                           <td style={{ textAlign: 'center' }}>
                             <button className="row-dispatch-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}>
                               Send Item &rarr;
@@ -1922,9 +1925,8 @@ function App() {
                         <th>Inward Date</th>
                         <th>Item & Brand</th>
                         <th>Warehouse Bay</th>
-                        <th>Lot & Bags</th>
-                        <th style={{ textAlign: 'right' }}>Available Qty</th>
-                        <th style={{ textAlign: 'right' }}>Weight (KG)</th>
+                        <th>Lot & Packaging</th>
+                        <th style={{ textAlign: 'right' }}>Available Stock (KG)</th>
                         <th style={{ textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
@@ -1948,13 +1950,10 @@ function App() {
                           </td>
                           <td>
                             <div className="lot-txt">{item.lotNo}</div>
-                            <div className="count-txt">{item.count}</div>
+                            <div className="count-txt">{item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
                           </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <span className="qty-badge-highlight">{item.qty} {item.unit}</span>
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: '600', color: '#0f766e' }}>
-                            {item.weightKg ? item.weightKg.toLocaleString() + ' KG' : '—'}
+                          <td style={{ textAlign: 'right', fontWeight: '800', color: '#0f766e', fontSize: '0.94rem' }}>
+                            {item.qty ? item.qty.toLocaleString() + ' KG' : '0 KG'}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <button className="row-dispatch-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}>
