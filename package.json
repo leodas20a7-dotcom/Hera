@@ -4,7 +4,10 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm --prefix hera-app run dev",
+    "build": "npm --prefix hera-app run build",
+    "preview": "npm --prefix hera-app run preview",
+    "lint": "npm --prefix hera-app run lint"
   },
   "keywords": [],
   "author": "",

@@ -631,7 +631,23 @@ html, body {
   display: inline;
 }
 
+.nav-label-tablet {
+  display: none;
+}
+
 .nav-label-mobile {
+  display: none;
+}
+
+.cart-label-desktop {
+  display: inline;
+}
+
+.cart-label-tablet {
+  display: none;
+}
+
+.cart-label-mobile {
   display: none;
 }
 
@@ -3348,20 +3364,120 @@ html, body {
   }
 }
 
-/* Responsive adjustments for Prime Hero Banner & Smooth Mobile App View */
-@media (max-width: 1024px) {
+/* Laptops, High-DPI Windows Scaling & Tablet Landscape (<= 1220px) */
+@media (max-width: 1220px) {
+  .app-header {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .brand-title {
+    gap: 6px;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  .brand-name {
+    font-size: 0.9rem;
+  }
+
+  .header-brand-logo {
+    height: 24px;
+  }
+
+  .header-nav-segmented {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .nav-item-btn {
+    padding: 5px 9px;
+    font-size: 0.73rem;
+    gap: 4px;
+    min-height: 30px;
+  }
+
+  .nav-label-desktop {
+    display: none;
+  }
+
+  .nav-label-tablet {
+    display: inline;
+  }
+
+  .nav-label-mobile {
+    display: none;
+  }
+
+  .cart-label-desktop {
+    display: none;
+  }
+
+  .cart-label-tablet {
+    display: inline;
+  }
+
+  .cart-label-mobile {
+    display: none;
+  }
+
+  .user-display-name {
+    max-width: 75px;
+  }
+
+  .header-cart-pill {
+    padding: 4px 10px;
+    min-height: 30px;
+    font-size: 0.74rem;
+  }
+
+  .prime-hero-inner {
+    gap: 24px;
+    padding: 24px 32px;
+  }
+}
+
+/* Medium Tablets & Narrow Screens (<= 960px) */
+@media (max-width: 960px) {
+  .app-header {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .user-profile-capsule .role-badge {
+    display: none;
+  }
+
+  .user-display-name {
+    max-width: 65px;
+    font-size: 0.7rem;
+  }
+
+  .nav-item-btn {
+    padding: 4px 7px;
+    font-size: 0.7rem;
+  }
+
+  .header-brand-divider {
+    display: none;
+  }
+
   .prime-hero-inner {
     grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 28px 24px;
+    gap: 20px;
+    padding: 24px 20px;
     text-align: center;
   }
+
   .prime-hero-content {
     text-align: center;
     align-items: center;
   }
+
   .prime-hero-heading {
-    font-size: 2.3rem;
+    font-size: 2.1rem;
   }
 }
 
@@ -3370,12 +3486,15 @@ html, body {
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    padding: 12px 14px 10px 14px;
+    padding: 10px 12px 8px 12px;
     gap: 8px;
-    row-gap: 10px;
+    row-gap: 8px;
     position: sticky;
     top: 0;
     z-index: 50;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
   }
 
   .brand-title {
@@ -3442,6 +3561,10 @@ html, body {
     display: none;
   }
 
+  .cart-label-tablet {
+    display: none;
+  }
+
   .cart-label-mobile {
     display: inline;
     font-size: 0.82rem;
@@ -3453,6 +3576,10 @@ html, body {
   }
 
   .nav-label-desktop {
+    display: none;
+  }
+
+  .nav-label-tablet {
     display: none;
   }
 

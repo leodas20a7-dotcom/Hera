@@ -743,6 +743,7 @@ function App() {
     issuedChallan,
     showLearnMoreModal,
     showInwardStatusModal,
+    showCustomerChallanModal,
     issuedInwardReceipt,
     acceptingRequest,
     activeTab,
@@ -1204,7 +1205,7 @@ function App() {
     if (!element) return;
     setIsDownloading(true);
 
-    const filename = `${activeChallanTab === 'delivery' ? 'Hera_Delivery_Challan' : 'Hera_Inward_GRN'}_${issuedChallan?.dcNo.replace(/[\/\\]/g, '_')}.pdf`;
+    const filename = `${activeChallanTab === 'delivery' ? 'Hera_Delivery_Challan' : 'Hera_Inward_GRN'}_${issuedChallan?.dcNo.replace(/[/\\s]/g, '_')}.pdf`;
 
     const opt = {
       margin: [8, 8, 8, 8],
@@ -1226,7 +1227,7 @@ function App() {
     if (!element) return;
     setIsDownloading(true);
 
-    const filename = `Hera_Inward_Advice_${issuedInwardReceipt?.inwardNo.replace(/[\/\\]/g, '_')}.pdf`;
+    const filename = `Hera_Inward_Advice_${issuedInwardReceipt?.inwardNo.replace(/[/\\s]/g, '_')}.pdf`;
     const opt = {
       margin: [8, 8, 8, 8],
       filename: filename,
@@ -1455,26 +1456,31 @@ function App() {
             <button className={`nav-item-btn ${activeTab === 'adminOverview' ? 'active' : ''}`} onClick={() => navigateToTab('adminOverview')}>
               <span className="nav-icon">📊</span>
               <span className="nav-label-desktop">Home</span>
+              <span className="nav-label-tablet">Home</span>
               <span className="nav-label-mobile">Home</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminInventory' ? 'active' : ''}`} onClick={() => navigateToTab('adminInventory')}>
               <span className="nav-icon">🏢</span>
               <span className="nav-label-desktop">All Stock</span>
+              <span className="nav-label-tablet">Stock</span>
               <span className="nav-label-mobile">Stock</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminIncoming' ? 'active' : ''}`} onClick={() => navigateToTab('adminIncoming')}>
               <span className="nav-icon">📥</span>
               <span className="nav-label-desktop">Incoming Goods ({inwardRequests.filter(r => r.status === 'PENDING').length})</span>
+              <span className="nav-label-tablet">Incoming ({inwardRequests.filter(r => r.status === 'PENDING').length})</span>
               <span className="nav-label-mobile">Inward {inwardRequests.filter(r => r.status === 'PENDING').length > 0 && <span className="nav-mini-badge">{inwardRequests.filter(r => r.status === 'PENDING').length}</span>}</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('adminInwardReport')}>
               <span className="nav-icon">📄</span>
               <span className="nav-label-desktop">Monthly Report</span>
+              <span className="nav-label-tablet">Report</span>
               <span className="nav-label-mobile">Report</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminChallans' ? 'active' : ''}`} onClick={() => navigateToTab('adminChallans')}>
               <span className="nav-icon">🚚</span>
               <span className="nav-label-desktop">Delivery Notes ({challanHistory.length})</span>
+              <span className="nav-label-tablet">Notes ({challanHistory.length})</span>
               <span className="nav-label-mobile">Notes</span>
             </button>
           </nav>
@@ -1960,21 +1966,25 @@ function App() {
           <button className={`nav-item-btn ${activeTab === 'clientHome' ? 'active' : ''}`} onClick={() => navigateToTab('clientHome')}>
             <span className="nav-icon">📊</span>
             <span className="nav-label-desktop">Home</span>
+            <span className="nav-label-tablet">Home</span>
             <span className="nav-label-mobile">Home</span>
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientInventory' ? 'active' : ''}`} onClick={() => navigateToTab('clientInventory')}>
             <span className="nav-icon">📦</span>
             <span className="nav-label-desktop">My Stored Items</span>
+            <span className="nav-label-tablet">Stored Items</span>
             <span className="nav-label-mobile">Stock</span>
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientSendGoods' ? 'active' : ''}`} onClick={() => navigateToTab('clientSendGoods')}>
             <span className="nav-icon">📥</span>
             <span className="nav-label-desktop">Send Goods to Warehouse</span>
+            <span className="nav-label-tablet">Send Goods</span>
             <span className="nav-label-mobile">Send</span>
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('clientInwardReport')}>
             <span className="nav-icon">📄</span>
             <span className="nav-label-desktop">My Stock Report</span>
+            <span className="nav-label-tablet">Stock Report</span>
             <span className="nav-label-mobile">Report</span>
           </button>
         </nav>
@@ -1988,6 +1998,7 @@ function App() {
 
           <button className={`cart-btn header-cart-pill ${activeTab === 'cart' ? 'active' : ''} ${cartBadgeBump ? 'badge-bump' : ''}`} onClick={() => navigateToTab('cart')}>
             <span className="cart-label-desktop">Delivery Cart</span>
+            <span className="cart-label-tablet">Cart</span>
             <span className="cart-label-mobile">🛒</span>
             <span className="cart-badge">{totalCartCount}</span>
           </button>
