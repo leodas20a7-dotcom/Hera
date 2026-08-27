@@ -1660,7 +1660,7 @@ function App() {
                 </div>
 
                 <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
-                  STOCK REPORT: 31.05.2026
+                  STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
                 </div>
 
                 <table className="rep-table-exact">
@@ -2226,7 +2226,7 @@ function App() {
               </div>
 
               <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
-                STOCK REPORT: 31.05.2026
+                STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
               </div>
 
               <table className="rep-table-exact">
