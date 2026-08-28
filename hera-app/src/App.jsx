@@ -93,7 +93,7 @@ function WarehouseHeroBanner({ onManageInventory, onLearnMore }) {
                   <div className="wood-plank"></div>
                   <div className="wood-plank"></div>
                 </div>
-                
+
                 {/* Clean Direct Hera Branding on Crate */}
                 <div className="crate-clean-brand">
                   <span className="crate-brand-title">HERA</span>
@@ -268,6 +268,7 @@ function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showChallanActionMenu, setShowChallanActionMenu] = useState(false);
   const [showCustomerChallanModal, setShowCustomerChallanModal] = useState(false);
+  const [showReportDownloadConfirm, setShowReportDownloadConfirm] = useState(false);
   const [cartBadgeBump, setCartBadgeBump] = useState(false);
 
   const triggerCartBump = () => {
@@ -382,29 +383,29 @@ function App() {
           totalQty: Number(c.total_qty),
           items: (c.delivery_note_items && c.delivery_note_items.length > 0)
             ? c.delivery_note_items.map(i => ({
-                grnNo: i.grn_no || 'GRN/0001345/26-27',
-                brand: i.brand || 'Sun Enterprises',
-                product: i.product || 'Raw Cashew Nuts',
-                variety: i.variety || 'RAW-CASHEW',
-                lotNo: i.lot_no || 'LOT-CASHEW',
-                count: i.count || '50KG BAGS',
-                whLocation: i.wh_location || 'SIP-B02',
-                selectedQty: Number(i.dispatched_qty) || Number(c.total_qty),
-                unit: i.unit || 'BAGS',
-                rateType: i.rate_type || 'Daily'
-              }))
+              grnNo: i.grn_no || 'GRN/0001345/26-27',
+              brand: i.brand || 'Sun Enterprises',
+              product: i.product || 'Raw Cashew Nuts',
+              variety: i.variety || 'RAW-CASHEW',
+              lotNo: i.lot_no || 'LOT-CASHEW',
+              count: i.count || '50KG BAGS',
+              whLocation: i.wh_location || 'SIP-B02',
+              selectedQty: Number(i.dispatched_qty) || Number(c.total_qty),
+              unit: i.unit || 'BAGS',
+              rateType: i.rate_type || 'Daily'
+            }))
             : [{
-                grnNo: 'GRN/0001345/26-27',
-                brand: 'Sun Enterprises',
-                product: 'Raw Cashew Nuts',
-                variety: 'RAW-CASHEW',
-                lotNo: 'LOT-CASHEW',
-                count: '50KG BAGS',
-                whLocation: 'SIP-B02',
-                selectedQty: Number(c.total_qty),
-                unit: 'BAGS',
-                rateType: 'Daily'
-              }]
+              grnNo: 'GRN/0001345/26-27',
+              brand: 'Sun Enterprises',
+              product: 'Raw Cashew Nuts',
+              variety: 'RAW-CASHEW',
+              lotNo: 'LOT-CASHEW',
+              count: '50KG BAGS',
+              whLocation: 'SIP-B02',
+              selectedQty: Number(c.total_qty),
+              unit: 'BAGS',
+              rateType: 'Daily'
+            }]
         }));
         setChallanHistory(mappedChallans);
       }
@@ -1111,6 +1112,35 @@ function App() {
     });
   };
 
+  const handleDownloadStockReportPdf = () => {
+    const element = document.getElementById('monthly-stock-report-sheet');
+    if (!element) return;
+    setIsDownloading(true);
+
+    const clientSuffix = currentUser?.role === 'admin'
+      ? 'Admin_Ledger'
+      : (currentUser?.company?.replace(/[^a-zA-Z0-9]/g, '_') || 'Stock_Report');
+    const dateFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+    const filename = `Hera_Monthly_Stock_Report_${clientSuffix}_${dateFormatted}.pdf`;
+
+    const opt = {
+      margin: [6, 6, 6, 6],
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+      setIsDownloading(false);
+      setShowReportDownloadConfirm(false);
+    }).catch((err) => {
+      console.warn('PDF save error:', err);
+      setIsDownloading(false);
+      setShowReportDownloadConfirm(false);
+    });
+  };
+
   // Reset to initial sample data
   const handleResetSampleData = () => {
     if (window.confirm('Reset all inventory and challan records to default Hera sample data?')) {
@@ -1175,7 +1205,7 @@ function App() {
               <div className="login-form-header">
                 <h2>{gatewayTab === 'login' ? 'Welcome Back!' : 'Create Account'}</h2>
                 <p className="login-form-sub">
-                  {gatewayTab === 'login' 
+                  {gatewayTab === 'login'
                     ? 'Sign in to access live warehouse inventory & dispatches'
                     : 'Register a new merchant trading account with Hera'}
                 </p>
@@ -1462,8 +1492,8 @@ function App() {
 
                       <div className="mobile-card-footer">
                         <span className="mobile-more-info">📍 Lot: {item.lotNo} • Inward: {item.inDate}</span>
-                        <button 
-                          className="mobile-card-action-btn" 
+                        <button
+                          className="mobile-card-action-btn"
                           onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
                         >
                           Send Item &rarr;
@@ -1601,8 +1631,8 @@ function App() {
                           <div className="mobile-card-footer">
                             <span className="mobile-more-info">📄 {req.inwardNo} • Exp: {req.expectedDate}</span>
                             {req.status === 'PENDING' ? (
-                              <button 
-                                className="mobile-card-action-btn" 
+                              <button
+                                className="mobile-card-action-btn"
                                 style={{ background: '#B91C1C' }}
                                 onClick={() => handleOpenAcceptModal(req)}
                               >
@@ -1630,12 +1660,12 @@ function App() {
                 <div>
                   <h1 className="page-heading">Monthly Stock Holding Report</h1>
                 </div>
-                <button className="doc-print-btn" onClick={() => window.print()}>
-                  🖨️ Print Report
+                <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                  Download PDF
                 </button>
               </div>
 
-              <div className="official-report-sheet">
+              <div className="official-report-sheet" id="monthly-stock-report-sheet">
                 <div className="report-header-flex">
                   <div className="rep-top-meta-row">
                     <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
@@ -1794,8 +1824,8 @@ function App() {
 
                         <div className="mobile-card-footer">
                           <span className="mobile-more-info">Issued: {dc.dcDate}</span>
-                          <button 
-                            className="mobile-card-action-btn" 
+                          <button
+                            className="mobile-card-action-btn"
                             onClick={(e) => { e.stopPropagation(); setIssuedChallan(dc); }}
                           >
                             View / Print &rarr;
@@ -2006,8 +2036,8 @@ function App() {
 
                       <div className="mobile-card-footer">
                         <span className="mobile-more-info">📍 Inward: {item.inDate} • Lot: {item.lotNo}</span>
-                        <button 
-                          className="mobile-card-action-btn" 
+                        <button
+                          className="mobile-card-action-btn"
                           onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
                         >
                           Send Item &rarr;
@@ -2196,12 +2226,12 @@ function App() {
               <div>
                 <h1 className="page-heading">My Monthly Stock Report</h1>
               </div>
-              <button className="doc-print-btn" onClick={() => window.print()}>
-                🖨️ Print Report
+              <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                Download PDF
               </button>
             </div>
 
-            <div className="official-report-sheet">
+            <div className="official-report-sheet" id="monthly-stock-report-sheet">
               <div className="report-header-flex">
                 <div className="rep-top-meta-row">
                   <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
@@ -2467,6 +2497,7 @@ function App() {
       {showCustomerChallanModal && renderCustomerChallanModal()}
       {issuedChallan && renderChallanModal()}
       {showLearnMoreModal && renderLearnMoreModal()}
+      {showReportDownloadConfirm && renderReportDownloadConfirmModal()}
 
       {/* PWA Mobile Web App Install Banner */}
       {renderInstallBanner()}
@@ -3432,6 +3463,39 @@ function App() {
               }}
             >
               Open Live Stock &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderReportDownloadConfirmModal() {
+    return (
+      <div className="modal-backdrop report-confirm-backdrop" onClick={() => !isDownloading && setShowReportDownloadConfirm(false)}>
+        <div className="modal-card report-confirm-modal-simple" onClick={(e) => e.stopPropagation()}>
+          <div className="report-confirm-simple-body">
+            <div className="report-simple-icon">📄</div>
+            <h3 className="report-simple-title">Download Stock Report?</h3>
+            <p className="report-simple-subtitle">Do you want to download the PDF?</p>
+          </div>
+
+          <div className="report-simple-actions">
+            <button
+              type="button"
+              className="btn-simple-no"
+              onClick={() => setShowReportDownloadConfirm(false)}
+              disabled={isDownloading}
+            >
+              No
+            </button>
+            <button
+              type="button"
+              className="btn-simple-yes"
+              onClick={handleDownloadStockReportPdf}
+              disabled={isDownloading}
+            >
+              {isDownloading ? 'Saving...' : 'Yes'}
             </button>
           </div>
         </div>
