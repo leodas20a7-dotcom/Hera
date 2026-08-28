@@ -622,7 +622,7 @@ function App() {
 
         if (foundUser) {
           const userPin = (foundUser.pin || '123456').toString().trim();
-          if (cleanPin !== userPin && cleanPin !== '123456' && cleanPin !== 'hera@admin2026') {
+          if (cleanPin !== userPin) {
             showToast('Incorrect 6-digit PIN. Please verify and try again.', 'error');
             setIsLoggingIn(false);
             return;
@@ -647,31 +647,10 @@ function App() {
           return;
         }
 
-        // Direct demo fallback
-        const isDemoAdmin = (digits === '9876543210' || cleanInput.toLowerCase().includes('admin')) && (cleanPin === '123456' || cleanPin === 'hera@admin2026');
-        if (isDemoAdmin) {
-          showToast('Login successful', 'success');
-          setCurrentUser(ADMIN_CREDENTIALS);
-          setActiveTab('adminOverview');
-          setPhoneInput('');
-          setPinInput('');
-          setIsLoggingIn(false);
-          return;
-        }
-
-        const isDemoClient = (digits === '9585543555' || cleanInput.toLowerCase().includes('lords') || cleanInput.toLowerCase() === 'client@lordskings.com') && (cleanPin === '123456');
-        if (isDemoClient) {
-          showToast('Login successful', 'success');
-          setCurrentUser(DEMO_CLIENT);
-          setActiveTab('clientInventory');
-          setPhoneInput('');
-          setPinInput('');
-          setIsLoggingIn(false);
-          return;
-        }
-
-        showToast('No account found for this Mobile Number. Please check or register.', 'error');
+        // If no matching user profile found in database
+        showToast('No account found with this Mobile Number.', 'error');
         setIsLoggingIn(false);
+        return;
       } catch (err) {
         console.error('Login error:', err);
         showToast('Authentication error. Please try again.', 'error');
