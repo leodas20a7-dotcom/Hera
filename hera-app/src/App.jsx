@@ -280,13 +280,17 @@ function App() {
   // Cart Multi-Step & Customer Details
   const [cart, setCart] = useState([]);
   const [cartStep, setCartStep] = useState('review'); // 'review' | 'details'
-  const [customerName, setCustomerName] = useState('M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.');
-  const [customerAddress, setCustomerAddress] = useState('T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92');
+  const [fromCompany, setFromCompany] = useState('M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.');
+  const [fromAddress, setFromAddress] = useState('#328, 2nd floor, Ten Square Mall, Jawaharlal Nehru Road, Koyambedu, Chennai-600107');
+  const [customerName, setCustomerName] = useState('GLOBAL ENTERPRISES');
+  const [customerAddress, setCustomerAddress] = useState('Jeevarathinam St, St, 3rd Street, Ksr Nagar, Chennai');
   const [contactPerson, setContactPerson] = useState('MR. CHIDAMBARAM');
   const [contactPhone, setContactPhone] = useState('9585543555');
-  const [transport, setTransport] = useState('TN22CY7236');
-  const [destination, setDestination] = useState('CHENNAI - KOYAMBEDU');
-  const [preparedBy, setPreparedBy] = useState('ADMIN');
+  const [transport, setTransport] = useState('TN30BR8670');
+  const [destination, setDestination] = useState('CHENNAI');
+  const [gateInNoInput, setGateInNoInput] = useState('');
+  const [dcDateInput, setDcDateInput] = useState(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'));
+  const [preparedBy, setPreparedBy] = useState('M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.');
   const [reportSubTab, setReportSubTab] = useState('stockReport'); // 'stockReport' | 'deliveryHistory'
 
   // Issued Challan modal & PDF state
@@ -977,9 +981,9 @@ function App() {
     setStocks(updatedStocks);
 
     const now = new Date();
-    const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+    const formattedDate = dcDateInput || now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
     const dcNumber = 'DC/' + String(Math.floor(1000000 + Math.random() * 9000000)).padStart(7, '0').slice(0, 7) + '/26-27';
-    const gateInNo = 'GPV/' + String(Math.floor(1000000 + Math.random() * 9000000)).padStart(7, '0').slice(0, 7) + '/26-27';
+    const gateInNo = gateInNoInput || ('GPV/' + String(Math.floor(1000000 + Math.random() * 9000000)).padStart(7, '0').slice(0, 7) + '/26-27');
 
     const totalQty = cart.reduce((sum, item) => sum + (item.selectedQty || 0), 0);
 
@@ -989,10 +993,12 @@ function App() {
       dcDate: formattedDate,
       customerName: customerName,
       address: customerAddress,
+      fromCompany: fromCompany,
+      fromAddress: fromAddress,
       contactPerson: contactPerson,
       contactNo: contactPhone,
       destination: destination,
-      preparedBy: preparedBy,
+      preparedBy: fromCompany || preparedBy,
       vehicleNo: transport,
       gateInNo: gateInNo,
       items: [...cart],
@@ -2848,21 +2854,46 @@ function App() {
                   <div className="cart-white-card checkout-card">
                     <form onSubmit={handlePlaceOrderSubmit} className="checkout-form">
                       <div className="form-grid-two">
+                        {/* FROM SECTION */}
                         <div className="form-group">
-                          <label>Customer / Party Name <span className="req">*</span></label>
+                          <label>From (Consignor / Company) <span className="req">*</span></label>
                           <input
                             type="text"
                             required
+                            placeholder="e.g. M/S. LORDS AND KINGS ENTERPRISES PVT.LTD."
+                            value={fromCompany}
+                            onChange={(e) => setFromCompany(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>From Address</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. #328, 2nd floor, Ten Square Mall, Koyambedu, Chennai-600107"
+                            value={fromAddress}
+                            onChange={(e) => setFromAddress(e.target.value)}
+                          />
+                        </div>
+
+                        {/* TO SECTION */}
+                        <div className="form-group">
+                          <label>To (Consignee / Customer Name) <span className="req">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. GLOBAL ENTERPRISES"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
                           />
                         </div>
 
                         <div className="form-group">
-                          <label>Destination Location <span className="req">*</span></label>
+                          <label>Destination City / Hub <span className="req">*</span></label>
                           <input
                             type="text"
                             required
+                            placeholder="e.g. CHENNAI"
                             value={destination}
                             onChange={(e) => setDestination(e.target.value)}
                           />
@@ -2872,8 +2903,31 @@ function App() {
                           <label>Delivery Destination Address</label>
                           <input
                             type="text"
+                            placeholder="e.g. Jeevarathinam St, St, 3rd Street, Ksr Nagar, Chennai"
                             value={customerAddress}
                             onChange={(e) => setCustomerAddress(e.target.value)}
+                          />
+                        </div>
+
+                        {/* TRANSPORT & LOGISTICS */}
+                        <div className="form-group">
+                          <label>Lorry / Vehicle Number <span className="req">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. TN30BR8670"
+                            value={transport}
+                            onChange={(e) => setTransport(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Gate-In Pass NO (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. GPV/1193322/26-27 (Auto-generated if blank)"
+                            value={gateInNoInput}
+                            onChange={(e) => setGateInNoInput(e.target.value)}
                           />
                         </div>
 
@@ -2882,11 +2936,13 @@ function App() {
                           <div className="two-inputs-row">
                             <input
                               type="text"
+                              placeholder="Contact Name"
                               value={contactPerson}
                               onChange={(e) => setContactPerson(e.target.value)}
                             />
                             <input
                               type="text"
+                              placeholder="Phone Number"
                               value={contactPhone}
                               onChange={(e) => setContactPhone(e.target.value)}
                             />
@@ -2894,13 +2950,12 @@ function App() {
                         </div>
 
                         <div className="form-group">
-                          <label>Lorry / Vehicle Number <span className="req">*</span></label>
+                          <label>Dispatch Date</label>
                           <input
                             type="text"
-                            required
-                            placeholder="e.g. TN22CY7236"
-                            value={transport}
-                            onChange={(e) => setTransport(e.target.value)}
+                            placeholder="e.g. 02-Jul-2026"
+                            value={dcDateInput}
+                            onChange={(e) => setDcDateInput(e.target.value)}
                           />
                         </div>
                       </div>
@@ -3237,9 +3292,9 @@ function App() {
                     <span className="meta-label">From</span>
                     <span className="meta-colon">:</span>
                     <span className="meta-value">
-                      <strong className="bold">{issuedChallan.preparedBy || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}</strong>
+                      <strong className="bold">{issuedChallan.fromCompany || issuedChallan.preparedBy || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}</strong>
                       <br />
-                      #328, 2nd floor, Ten Square Mall, Jawaharlal Nehru Road, Koyambedu, Chennai-600107
+                      {issuedChallan.fromAddress || '#328, 2nd floor, Ten Square Mall, Jawaharlal Nehru Road, Koyambedu, Chennai-600107'}
                     </span>
                   </div>
                   <div className="meta-row" style={{ marginTop: '5px' }}>
