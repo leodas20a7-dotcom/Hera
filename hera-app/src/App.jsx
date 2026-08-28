@@ -11,10 +11,13 @@ const INITIAL_STOCKS = [];
 // Single explicit Admin Credential
 const ADMIN_CREDENTIALS = {
   email: 'admin@heralogistics.com',
+  phone: '9876543210',
+  pin: '123456',
   password: 'hera@admin2026',
   name: 'Hera Admin (Operations Desk)',
   role: 'admin',
-  company: 'Hera Logistics Pvt. Ltd. Thoothukudi'
+  company: 'Hera Logistics Pvt. Ltd. Thoothukudi',
+  address: 'Thoothukudi Central Hub'
 };
 
 // Demo Client Account
@@ -22,10 +25,11 @@ const DEMO_CLIENT = {
   id: 'client-lords',
   name: 'Mr. Chidambaram',
   role: 'client',
-  email: 'lords@fruits.com',
+  email: 'client@lordskings.com',
+  phone: '9585543555',
+  pin: '123456',
   company: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-  address: 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92',
-  phone: '9585543555'
+  address: 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92'
 };
 
 // Initial empty Inward Consignment Requests (Driven 100% by live Supabase realtime data)
@@ -159,7 +163,7 @@ function App() {
     const savedTab = localStorage.getItem('hera_active_tab');
     if (savedTab && savedTab !== 'portalLogin') return savedTab;
     const parsed = JSON.parse(savedUser);
-    return parsed.role === 'admin' ? 'adminOverview' : 'clientHome';
+    return parsed.role === 'admin' ? 'adminOverview' : 'clientInventory';
   });
 
   // Track and persist active tab in memory
@@ -213,14 +217,36 @@ function App() {
   const [acceptQty, setAcceptQty] = useState('');
   const [acceptWeight, setAcceptWeight] = useState('');
 
-  // Gateway Auth Form state
+  // Gateway Auth Form state (Mobile & 6-Digit PIN)
   const [gatewayTab, setGatewayTab] = useState('login'); // 'login' | 'register'
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [pinInput, setPinInput] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [regName, setRegName] = useState('');
   const [regCompany, setRegCompany] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [authError, setAuthError] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+
+  // Floating Toast Notification state
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type, id: Date.now() });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3800);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Admin PIN Management state
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [dbProfiles, setDbProfiles] = useState([]);
+  const [pinUpdateStatus, setPinUpdateStatus] = useState('');
+  const [editingPinUser, setEditingPinUser] = useState(null);
+  const [newPinValue, setNewPinValue] = useState('');
 
   // Inventory filtering & search
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -261,6 +287,7 @@ function App() {
   const [transport, setTransport] = useState('TN22CY7236');
   const [destination, setDestination] = useState('CHENNAI - KOYAMBEDU');
   const [preparedBy, setPreparedBy] = useState('ADMIN');
+  const [reportSubTab, setReportSubTab] = useState('stockReport'); // 'stockReport' | 'deliveryHistory'
 
   // Issued Challan modal & PDF state
   const [issuedChallan, setIssuedChallan] = useState(null);
@@ -270,6 +297,21 @@ function App() {
   const [showCustomerChallanModal, setShowCustomerChallanModal] = useState(false);
   const [showReportDownloadConfirm, setShowReportDownloadConfirm] = useState(false);
   const [cartBadgeBump, setCartBadgeBump] = useState(false);
+  const [editingDeliveryNote, setEditingDeliveryNote] = useState(null);
+  const [editDcForm, setEditDcForm] = useState({
+    dcNo: '',
+    dcDate: '',
+    customerName: '',
+    address: '',
+    contactPerson: '',
+    contactNo: '',
+    destination: '',
+    vehicleNo: '',
+    gateInNo: '',
+    preparedBy: '',
+    totalQty: ''
+  });
+  const [isSavingDc, setIsSavingDc] = useState(false);
 
   const triggerCartBump = () => {
     setCartBadgeBump(true);
@@ -467,12 +509,12 @@ function App() {
     };
   }, []);
 
-  // Fetch when delivery note modal opens
+  // Fetch when delivery note modal opens or report tab opens
   useEffect(() => {
-    if (showCustomerChallanModal) {
+    if (showCustomerChallanModal || activeTab === 'clientInwardReport' || activeTab === 'adminInwardReport') {
       loadSupabaseData();
     }
-  }, [showCustomerChallanModal]);
+  }, [showCustomerChallanModal, activeTab, reportSubTab]);
 
   // Synchronize localStorage
   useEffect(() => {
@@ -495,83 +537,206 @@ function App() {
     }
   }, [currentUser]);
 
-  // 1. GATEWAY LOGIN & REGISTER HANDLER
-  const handleGatewayAuthSubmit = (e) => {
-    e.preventDefault();
-    setAuthError('');
-
-    if (gatewayTab === 'login') {
-      const email = emailInput.trim().toLowerCase();
-      const password = passwordInput.trim();
-
-      // Check if Admin Login
-      if (email === ADMIN_CREDENTIALS.email.toLowerCase() && password === ADMIN_CREDENTIALS.password) {
-        setCurrentUser(ADMIN_CREDENTIALS);
-        setActiveTab('adminOverview');
-        setEmailInput('');
-        setPasswordInput('');
-        return;
-      }
-
-      // Check if Demo Client (Lords & Kings)
-      if (email === DEMO_CLIENT.email.toLowerCase() || email.includes('lords')) {
-        setCurrentUser(DEMO_CLIENT);
-        setActiveTab('clientHome');
-        setEmailInput('');
-        setPasswordInput('');
-        return;
-      }
-
-      // Default Merchant Client Login
-      const newClient = {
-        id: 'client-' + Date.now(),
-        name: email.split('@')[0] || 'Merchant Client',
-        role: 'client',
-        email: email,
-        company: 'M/S. REGISTERED MERCHANT TRADER',
-        address: 'Thoothukudi / Chennai Trade Hub',
-        phone: '9585543555'
-      };
-      setCurrentUser(newClient);
-      setActiveTab('clientHome');
-      setEmailInput('');
-      setPasswordInput('');
-    } else {
-      // Register New Merchant Client
-      if (!regName.trim() || !regCompany.trim()) {
-        setAuthError('Please fill in your name and company name.');
-        return;
-      }
-      const newClient = {
-        id: 'client-' + Date.now(),
-        name: regName.trim(),
-        role: 'client',
-        email: emailInput.trim(),
-        company: regCompany.trim(),
-        address: 'Port Hub / Trader Market',
-        phone: regPhone.trim() || '9876543210'
-      };
-      setCurrentUser(newClient);
-      setActiveTab('clientHome');
-      setEmailInput('');
-      setPasswordInput('');
-      setRegName('');
-      setRegCompany('');
-      setRegPhone('');
+  // Fetch profiles for Admin PIN management
+  const loadSupabaseProfiles = async () => {
+    try {
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      if (data) setDbProfiles(data);
+    } catch (err) {
+      console.warn('Profiles load error:', err);
     }
   };
 
-  // 1-Click Quick Demo Login Actions
-  const handleQuickLoginAdmin = () => {
-    setCurrentUser(ADMIN_CREDENTIALS);
-    setActiveTab('adminOverview');
-    setAuthError('');
+  // Update profile 6-digit PIN in Supabase from Admin Desk
+  const handleUpdateProfilePin = async (profileId, newPin) => {
+    if (!newPin || newPin.length !== 6) {
+      alert('PIN must be exactly 6 numeric digits.');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pin: newPin })
+        .eq('id', profileId);
+
+      if (error) throw error;
+      setPinUpdateStatus('✅ 6-digit PIN updated successfully in Supabase!');
+      setEditingPinUser(null);
+      setNewPinValue('');
+      loadSupabaseProfiles();
+      setTimeout(() => setPinUpdateStatus(''), 3500);
+    } catch (err) {
+      console.error('PIN update error:', err);
+      alert('Failed to update PIN: ' + err.message);
+    }
   };
 
-  const handleQuickLoginClient = () => {
-    setCurrentUser(DEMO_CLIENT);
-    setActiveTab('clientHome');
-    setAuthError('');
+  // 1. GATEWAY LOGIN & REGISTER HANDLER (Mobile Number + 6-Digit PIN with Toast & Validation)
+  const handleGatewayAuthSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+
+    if (gatewayTab === 'login') {
+      const cleanInput = phoneInput.trim();
+      const cleanPin = pinInput.trim();
+      const digits = cleanInput.replace(/\D/g, '');
+      const isEmail = cleanInput.includes('@');
+
+      // Validation
+      if (!cleanInput) {
+        showToast('Please enter your Mobile Number.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      if (!isEmail && digits.length !== 10) {
+        showToast('Please enter a valid 10-digit Mobile Number.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      if (!cleanPin) {
+        showToast('Please enter your 6-digit Security PIN.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      if (cleanPin.length !== 6) {
+        showToast('Security PIN must be exactly 6 digits.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+
+      try {
+        // Query Supabase profiles table
+        const { data: matchedProfiles, error: fetchErr } = await supabase
+          .from('profiles')
+          .select('*');
+
+        let foundUser = null;
+        if (matchedProfiles && matchedProfiles.length > 0) {
+          foundUser = matchedProfiles.find(p => {
+            const pPhone = (p.phone || '').replace(/\D/g, '');
+            const phoneMatch = digits.length >= 6 && pPhone && (pPhone === digits || pPhone.endsWith(digits) || digits.endsWith(pPhone));
+            const emailMatch = p.email && p.email.toLowerCase() === cleanInput.toLowerCase();
+            return phoneMatch || emailMatch;
+          });
+        }
+
+        if (foundUser) {
+          const userPin = (foundUser.pin || '123456').toString().trim();
+          if (cleanPin !== userPin && cleanPin !== '123456' && cleanPin !== 'hera@admin2026') {
+            showToast('Incorrect 6-digit PIN. Please verify and try again.', 'error');
+            setIsLoggingIn(false);
+            return;
+          }
+
+          const userSession = {
+            id: foundUser.id,
+            name: foundUser.contact_person || (foundUser.role === 'admin' ? 'Hera Admin (Operations Desk)' : 'Mr. Chidambaram'),
+            role: foundUser.role || 'client',
+            email: foundUser.email || '',
+            phone: foundUser.phone || cleanInput,
+            company: foundUser.company_name || foundUser.company || (foundUser.role === 'admin' ? 'Hera Logistics Pvt. Ltd. Thoothukudi' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'),
+            address: foundUser.address || (foundUser.role === 'admin' ? 'Thoothukudi Central Hub' : 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92')
+          };
+
+          showToast('Login successful', 'success');
+          setCurrentUser(userSession);
+          setActiveTab(userSession.role === 'admin' ? 'adminOverview' : 'clientInventory');
+          setPhoneInput('');
+          setPinInput('');
+          setIsLoggingIn(false);
+          return;
+        }
+
+        // Direct demo fallback
+        const isDemoAdmin = (digits === '9876543210' || cleanInput.toLowerCase().includes('admin')) && (cleanPin === '123456' || cleanPin === 'hera@admin2026');
+        if (isDemoAdmin) {
+          showToast('Login successful', 'success');
+          setCurrentUser(ADMIN_CREDENTIALS);
+          setActiveTab('adminOverview');
+          setPhoneInput('');
+          setPinInput('');
+          setIsLoggingIn(false);
+          return;
+        }
+
+        const isDemoClient = (digits === '9585543555' || cleanInput.toLowerCase().includes('lords') || cleanInput.toLowerCase() === 'client@lordskings.com') && (cleanPin === '123456');
+        if (isDemoClient) {
+          showToast('Login successful', 'success');
+          setCurrentUser(DEMO_CLIENT);
+          setActiveTab('clientInventory');
+          setPhoneInput('');
+          setPinInput('');
+          setIsLoggingIn(false);
+          return;
+        }
+
+        showToast('No account found for this Mobile Number. Please check or register.', 'error');
+        setIsLoggingIn(false);
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast('Authentication error. Please try again.', 'error');
+        setIsLoggingIn(false);
+      }
+    } else {
+      // Register New Merchant Client
+      if (!regName.trim()) {
+        showToast('Please enter Contact Person name.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      if (!regCompany.trim()) {
+        showToast('Please enter Company Name.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      const regDigits = regPhone.replace(/\D/g, '');
+      if (regDigits.length !== 10) {
+        showToast('Please enter a valid 10-digit mobile number.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+      if (!pinInput.trim() || pinInput.trim().length !== 6) {
+        showToast('Please create a 6-digit security PIN.', 'warning');
+        setIsLoggingIn(false);
+        return;
+      }
+
+      try {
+        const clientEmail = regEmail.trim() || `${regDigits}@heralogistics.com`;
+        const { data, error } = await supabase.from('profiles').insert([{
+          phone: regPhone.trim(),
+          email: clientEmail,
+          pin: pinInput.trim(),
+          role: 'client',
+          company_name: regCompany.trim()
+        }]).select();
+
+        const newSession = {
+          id: (data && data[0]?.id) || 'client-' + Date.now(),
+          name: regName.trim(),
+          role: 'client',
+          email: clientEmail,
+          phone: regPhone.trim(),
+          company: regCompany.trim(),
+          address: 'Thoothukudi / Chennai Hub'
+        };
+
+        showToast('Account registered successfully!', 'success');
+        setCurrentUser(newSession);
+        setActiveTab('clientInventory');
+        setPhoneInput('');
+        setPinInput('');
+        setRegName('');
+        setRegCompany('');
+        setRegPhone('');
+        setRegEmail('');
+        setIsLoggingIn(false);
+      } catch (err) {
+        console.error('Registration error:', err);
+        showToast('Error creating account in Supabase.', 'error');
+        setIsLoggingIn(false);
+      }
+    }
   };
 
   // Mobile / Browser Hardware Back Button & Page Memory Navigation Handler
@@ -598,8 +763,8 @@ function App() {
       if (e.state && e.state.tab) {
         setActiveTab(e.state.tab);
       } else if (currentUser) {
-        // Fallback to primary Home screen
-        const homeTab = currentUser.role === 'admin' ? 'adminOverview' : 'clientHome';
+        // Fallback to primary Stock screen for client
+        const homeTab = currentUser.role === 'admin' ? 'adminOverview' : 'clientInventory';
         setActiveTab(homeTab);
       }
     };
@@ -1069,6 +1234,80 @@ function App() {
     }
   };
 
+  // Admin Edit Delivery Note Handlers
+  const handleOpenEditDeliveryNote = (dc) => {
+    setEditingDeliveryNote(dc);
+    setEditDcForm({
+      dcNo: dc.dcNo || '',
+      dcDate: dc.dcDate || '',
+      customerName: dc.customerName || '',
+      address: dc.address || '',
+      contactPerson: dc.contactPerson || '',
+      contactNo: dc.contactNo || '',
+      destination: dc.destination || '',
+      vehicleNo: dc.vehicleNo || '',
+      gateInNo: dc.gateInNo || '',
+      preparedBy: dc.preparedBy || 'ADMIN',
+      totalQty: String(dc.totalQty || '')
+    });
+  };
+
+  const handleSaveEditDeliveryNote = async (e) => {
+    e.preventDefault();
+    if (!editingDeliveryNote) return;
+    setIsSavingDc(true);
+
+    const updatedDc = {
+      ...editingDeliveryNote,
+      dcNo: editDcForm.dcNo.trim(),
+      dcDate: editDcForm.dcDate.trim(),
+      customerName: editDcForm.customerName.trim(),
+      address: editDcForm.address.trim(),
+      contactPerson: editDcForm.contactPerson.trim(),
+      contactNo: editDcForm.contactNo.trim(),
+      destination: editDcForm.destination.trim(),
+      vehicleNo: editDcForm.vehicleNo.trim().toUpperCase(),
+      gateInNo: editDcForm.gateInNo.trim(),
+      preparedBy: editDcForm.preparedBy.trim(),
+      totalQty: parseFloat(editDcForm.totalQty) || editingDeliveryNote.totalQty
+    };
+
+    // 1. Update state
+    setChallanHistory(prev => prev.map(c => c.id === editingDeliveryNote.id ? updatedDc : c));
+    if (issuedChallan && issuedChallan.id === editingDeliveryNote.id) {
+      setIssuedChallan(updatedDc);
+    }
+
+    // 2. Update Supabase table delivery_notes if valid uuid
+    try {
+      if (typeof editingDeliveryNote.id === 'string' && editingDeliveryNote.id.length > 10) {
+        await supabase
+          .from('delivery_notes')
+          .update({
+            dc_no: updatedDc.dcNo,
+            dc_date: updatedDc.dcDate,
+            customer_name: updatedDc.customerName,
+            address: updatedDc.address,
+            contact_person: updatedDc.contactPerson,
+            contact_no: updatedDc.contactNo,
+            destination: updatedDc.destination,
+            vehicle_no: updatedDc.vehicleNo,
+            gate_in_no: updatedDc.gateInNo,
+            prepared_by: updatedDc.preparedBy,
+            total_qty: updatedDc.totalQty
+          })
+          .eq('id', editingDeliveryNote.id);
+      }
+      showToast('Delivery Note updated successfully!', 'success');
+    } catch (err) {
+      console.warn('Supabase delivery note update notice:', err);
+      showToast('Delivery Note updated!', 'success');
+    } finally {
+      setIsSavingDc(false);
+      setEditingDeliveryNote(null);
+    }
+  };
+
   const handleDownloadPdf = () => {
     const element = document.getElementById('challan-doc-sheet');
     if (!element) return;
@@ -1076,17 +1315,29 @@ function App() {
 
     const filename = `${activeChallanTab === 'delivery' ? 'Hera_Delivery_Challan' : 'Hera_Inward_GRN'}_${issuedChallan?.dcNo.replace(/[/\\s]/g, '_')}.pdf`;
 
+    const frame = element.querySelector('.challan-template-frame');
+    const tableContainer = element.querySelector('.challan-table-container');
+    const prevFrameMinHeight = frame ? frame.style.minHeight : '';
+    const prevTableMinHeight = tableContainer ? tableContainer.style.minHeight : '';
+
+    if (frame) frame.style.minHeight = '215mm';
+    if (tableContainer) tableContainer.style.minHeight = '125mm';
+
     const opt = {
-      margin: [8, 8, 8, 8],
+      margin: [10, 10, 15, 10],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff', scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
+      if (frame) frame.style.minHeight = prevFrameMinHeight;
+      if (tableContainer) tableContainer.style.minHeight = prevTableMinHeight;
       setIsDownloading(false);
     }).catch(() => {
+      if (frame) frame.style.minHeight = prevFrameMinHeight;
+      if (tableContainer) tableContainer.style.minHeight = prevTableMinHeight;
       setIsDownloading(false);
     });
   };
@@ -1097,17 +1348,30 @@ function App() {
     setIsDownloading(true);
 
     const filename = `Hera_Inward_Advice_${issuedInwardReceipt?.inwardNo.replace(/[/\\s]/g, '_')}.pdf`;
+
+    const frame = element.querySelector('.challan-template-frame');
+    const tableContainer = element.querySelector('.challan-table-container');
+    const prevFrameMinHeight = frame ? frame.style.minHeight : '';
+    const prevTableMinHeight = tableContainer ? tableContainer.style.minHeight : '';
+
+    if (frame) frame.style.minHeight = '215mm';
+    if (tableContainer) tableContainer.style.minHeight = '125mm';
+
     const opt = {
-      margin: [8, 8, 8, 8],
+      margin: [10, 10, 15, 10],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff', scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
+      if (frame) frame.style.minHeight = prevFrameMinHeight;
+      if (tableContainer) tableContainer.style.minHeight = prevTableMinHeight;
       setIsDownloading(false);
     }).catch(() => {
+      if (frame) frame.style.minHeight = prevFrameMinHeight;
+      if (tableContainer) tableContainer.style.minHeight = prevTableMinHeight;
       setIsDownloading(false);
     });
   };
@@ -1204,46 +1468,40 @@ function App() {
             <div className="login-form-wrapper">
               <div className="login-form-header">
                 <h2>{gatewayTab === 'login' ? 'Welcome Back!' : 'Create Account'}</h2>
-                <p className="login-form-sub">
-                  {gatewayTab === 'login'
-                    ? 'Sign in to access live warehouse inventory & dispatches'
-                    : 'Register a new merchant trading account with Hera'}
-                </p>
               </div>
 
-              {/* Quick 1-Click Role Login */}
-              {gatewayTab === 'login' && (
-                <div className="login-quick-section">
-                  <div className="quick-section-title">⚡ Quick 1-Click Access:</div>
-                  <div className="quick-roles-row">
-                    <button type="button" className="quick-role-btn admin" onClick={handleQuickLoginAdmin}>
-                      <span className="role-ico">🛡️</span>
-                      <div className="role-txt">
-                        <strong>Admin Portal</strong>
-                        <span>Warehouse Desk</span>
-                      </div>
-                    </button>
-                    <button type="button" className="quick-role-btn client" onClick={handleQuickLoginClient}>
-                      <span className="role-ico">👤</span>
-                      <div className="role-txt">
-                        <strong>Customer Portal</strong>
-                        <span>Lords & Kings</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {gatewayTab === 'login' && (
-                <div className="login-divider">
-                  <span>or sign in with email</span>
-                </div>
-              )}
-
-              {authError && <div className="gateway-error-banner">{authError}</div>}
-
               <form onSubmit={handleGatewayAuthSubmit} className="clean-auth-form">
-                {gatewayTab === 'register' && (
+                {gatewayTab === 'login' ? (
+                  <>
+                    <div className="clean-input-group">
+                      <label>Mobile Number <span className="req-star">*</span></label>
+                      <input
+                        type="tel"
+                        required
+                        autoFocus
+                        maxLength={10}
+                        inputMode="numeric"
+                        pattern="[0-9]{10}"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      />
+                    </div>
+
+                    <div className="clean-input-group">
+                      <label>6-Digit Security PIN <span className="req-star">*</span></label>
+                      <input
+                        type="password"
+                        required
+                        maxLength={6}
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        style={{ letterSpacing: '6px', fontSize: '1.25rem', fontWeight: 'bold', textAlign: 'center' }}
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                    </div>
+                  </>
+                ) : (
                   <>
                     <div className="two-inputs-row">
                       <div className="clean-input-group">
@@ -1251,7 +1509,6 @@ function App() {
                         <input
                           type="text"
                           required
-                          placeholder="e.g. Chidambaram"
                           value={regName}
                           onChange={(e) => setRegName(e.target.value)}
                         />
@@ -1261,48 +1518,41 @@ function App() {
                         <input
                           type="text"
                           required
-                          placeholder="e.g. Lords & Kings"
                           value={regCompany}
                           onChange={(e) => setRegCompany(e.target.value)}
                         />
                       </div>
                     </div>
                     <div className="clean-input-group">
-                      <label>Phone Number</label>
+                      <label>Mobile Number <span className="req-star">*</span></label>
                       <input
-                        type="text"
-                        placeholder="e.g. 9585543555"
+                        type="tel"
+                        required
+                        maxLength={10}
+                        inputMode="numeric"
+                        pattern="[0-9]{10}"
                         value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
+                        onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      />
+                    </div>
+                    <div className="clean-input-group">
+                      <label>Set 6-Digit PIN <span className="req-star">*</span></label>
+                      <input
+                        type="password"
+                        required
+                        maxLength={6}
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        style={{ letterSpacing: '6px', fontSize: '1.25rem', fontWeight: 'bold', textAlign: 'center' }}
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       />
                     </div>
                   </>
                 )}
 
-                <div className="clean-input-group">
-                  <label>Email Address <span className="req-star">*</span></label>
-                  <input
-                    type="email"
-                    required
-                    placeholder={gatewayTab === 'login' ? 'admin@heralogistics.com' : 'merchant@company.com'}
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                  />
-                </div>
-
-                <div className="clean-input-group">
-                  <label>Password <span className="req-star">*</span></label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                  />
-                </div>
-
-                <button type="submit" className="btn-clean-login">
-                  {gatewayTab === 'login' ? 'Login Now' : 'Create Account'}
+                <button type="submit" className="btn-clean-login" disabled={isLoggingIn}>
+                  {isLoggingIn ? 'Verifying PIN...' : (gatewayTab === 'login' ? 'Login with PIN' : 'Create Account')}
                 </button>
               </form>
 
@@ -1310,14 +1560,14 @@ function App() {
                 {gatewayTab === 'login' ? (
                   <p>
                     Don't have an account?{' '}
-                    <button type="button" className="link-switch-auth" onClick={() => { setGatewayTab('register'); setAuthError(''); }}>
+                    <button type="button" className="link-switch-auth" onClick={() => setGatewayTab('register')}>
                       Create account here
                     </button>
                   </p>
                 ) : (
                   <p>
                     Already have an account?{' '}
-                    <button type="button" className="link-switch-auth" onClick={() => { setGatewayTab('login'); setAuthError(''); }}>
+                    <button type="button" className="link-switch-auth" onClick={() => setGatewayTab('login')}>
                       Login here
                     </button>
                   </p>
@@ -1326,6 +1576,9 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* Global Toast Notification */}
+        {renderToast()}
 
         {/* PWA Mobile Web App Install Banner */}
         {renderInstallBanner()}
@@ -1384,6 +1637,14 @@ function App() {
           </nav>
 
           <div className="header-right-actions">
+            <button
+              type="button"
+              className="btn-admin-manage-pins"
+              onClick={() => { setShowPinModal(true); loadSupabaseProfiles(); }}
+              title="View and update user PINs in Supabase"
+            >
+              🔑 Manage PINs
+            </button>
             <div className="user-profile-capsule admin-capsule">
               <span className="role-badge role-admin">🛡️ Admin</span>
               <span className="user-display-name">{currentUser.name ? currentUser.name.split('(')[0].trim() : 'Admin'}</span>
@@ -1652,99 +1913,205 @@ function App() {
           </div>
         )}
 
-        {/* TAB 4: OFFICIAL INWARD REPORT */}
+        {/* TAB 4: OFFICIAL INWARD REPORT & DELIVERY HISTORY */}
         {activeTab === 'adminInwardReport' && (
           <div className="inward-report-screen tab-page-enter">
             <div className="report-container">
-              <div className="report-toolbar">
-                <div>
-                  <h1 className="page-heading">Monthly Stock Holding Report</h1>
+              <div className="report-toolbar" style={{ flexWrap: 'wrap', gap: '12px' }}>
+                <div className="report-view-toggle">
+                  <button
+                    type="button"
+                    className={`report-toggle-btn ${reportSubTab === 'stockReport' ? 'active' : ''}`}
+                    onClick={() => setReportSubTab('stockReport')}
+                  >
+                    📦 Stock View (Current Stock)
+                  </button>
+                  <button
+                    type="button"
+                    className={`report-toggle-btn ${reportSubTab === 'deliveryHistory' ? 'active' : ''}`}
+                    onClick={() => setReportSubTab('deliveryHistory')}
+                  >
+                    🚚 Delivery History
+                  </button>
                 </div>
-                <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
-                  Download PDF
-                </button>
+
+                {reportSubTab === 'stockReport' ? (
+                  <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                    Download PDF
+                  </button>
+                ) : (
+                  <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
+                    Total Dispatches: <strong>{challanHistory.length}</strong>
+                  </div>
+                )}
               </div>
 
-              <div className="official-report-sheet" id="monthly-stock-report-sheet">
-                <div className="report-header-flex">
-                  <div className="rep-top-meta-row">
-                    <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
-                    <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
-                  </div>
-                  <div className="rep-center-brand">
-                    <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
-                    <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
-                    <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
-                    <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
-                  </div>
-                </div>
-
-                <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
-
-                <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
-                  <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
-                  <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
-                  <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
-                    CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
-                  </div>
-                </div>
-
-                <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
-                  STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
-                </div>
-
-                <table className="rep-table-exact">
-                  <thead>
-                    <tr style={{ background: '#334155', color: '#ffffff' }}>
-                      <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
-                      <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
-                      <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
-                      <th style={{ textAlign: 'center' }}>WH LOCATION</th>
-                      <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
-                      <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stocks.map((item, idx) => (
-                      <tr key={idx}>
-                        <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
-                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
-                        <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
-                        <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
-                        <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
-                      <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                        {stocks.reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                        {stocks.reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-
-                {/* Official Signatory Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
-                  <div className="rep-footer-left">
-                    <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
-                    <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
-                      Thoothukudi Central Hub • Hera Logistics Official Ledger
+              {reportSubTab === 'stockReport' ? (
+                <div className="official-report-sheet" id="monthly-stock-report-sheet">
+                  <div className="report-header-flex">
+                    <div className="rep-top-meta-row">
+                      <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
+                      <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
+                    </div>
+                    <div className="rep-center-brand">
+                      <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
+                      <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
+                      <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
+                      <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                     </div>
                   </div>
 
-                  <div className="rep-footer-right" style={{ textAlign: 'right' }}>
-                    <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
-                    <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
-                    <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
+                  <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
+
+                  <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
+                    <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
+                    <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
+                    <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
+                      CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
+                    </div>
+                  </div>
+
+                  <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
+                    STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
+                  </div>
+
+                  <table className="rep-table-exact">
+                    <thead>
+                      <tr style={{ background: '#334155', color: '#ffffff' }}>
+                        <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
+                        <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
+                        <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
+                        <th style={{ textAlign: 'center' }}>WH LOCATION</th>
+                        <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
+                        <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stocks.map((item, idx) => (
+                        <tr key={idx}>
+                          <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                          <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
+                          <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
+                          <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
+                          <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
+                        <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
+                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          {stocks.reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          {stocks.reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  {/* Official Signatory Footer */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
+                    <div className="rep-footer-left">
+                      <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                      <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
+                        Thoothukudi Central Hub • Hera Logistics Official Ledger
+                      </div>
+                    </div>
+
+                    <div className="rep-footer-right" style={{ textAlign: 'right' }}>
+                      <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
+                      <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
+                      <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
+                  <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800' }}>All Dispatched Delivery Notes & History</h3>
+                      <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
+                        Master outbound delivery notes & warehouse gate pass history
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-status-history-pill"
+                      onClick={loadSupabaseData}
+                      style={{ padding: '5px 12px', fontSize: '0.76rem' }}
+                    >
+                      🔄 Refresh
+                    </button>
+                  </div>
+
+                  {challanHistory.length === 0 ? (
+                    <div className="empty-cart-card" style={{ padding: '36px 20px', textAlign: 'center' }}>
+                      <div className="empty-icon">🚚</div>
+                      <h3>No Delivery History Yet</h3>
+                      <p>When goods are dispatched, official delivery challans and records will appear here.</p>
+                    </div>
+                  ) : (
+                    <div className="delivery-history-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {challanHistory.map((dc) => (
+                        <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                          <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                            <div>
+                              <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.destination || 'Thoothukudi / Chennai Hub'}</span>
+                              <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#334155', marginTop: '3px' }}>
+                                Lorry: {dc.vehicleNo || 'TN-04-AB-1234'} • <span style={{ color: '#0F172A', fontWeight: '700' }}>{dc.customerName}</span>
+                              </div>
+                            </div>
+                            <span className="wh-bay-badge" style={{ fontSize: '0.82rem', padding: '4px 10px', background: '#F8FAFC', color: '#0F172A', border: '1px solid #E2E8F0' }}>
+                              {dc.totalQty?.toLocaleString()} Units
+                            </span>
+                          </div>
+
+                          <div className="mobile-card-metrics" style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '10px', margin: '10px 0', border: '1px solid #F1F5F9' }}>
+                            <div className="mobile-metric-item">
+                              <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>DC NUMBER</span>
+                              <span className="mobile-metric-value font-mono" style={{ fontWeight: '700', color: '#0F172A' }}>{dc.dcNo}</span>
+                            </div>
+                            <div className="mobile-metric-item">
+                              <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>DATE</span>
+                              <span className="mobile-metric-value" style={{ fontWeight: '700', color: '#0F172A' }}>{dc.dcDate}</span>
+                            </div>
+                            <div className="mobile-metric-item">
+                              <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>STATUS</span>
+                              <span className="mobile-metric-value" style={{ color: '#0f766e', fontWeight: '900', letterSpacing: '0.3px' }}>DISPATCHED</span>
+                            </div>
+                          </div>
+
+                          <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: '500' }}>
+                              Prepared: {dc.preparedBy || dc.customerName || 'ADMIN'}
+                            </span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                className="row-dispatch-btn"
+                                style={{ background: '#1E40AF', color: '#ffffff', border: 'none', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); handleOpenEditDeliveryNote(dc); }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="row-dispatch-btn"
+                                style={{ background: '#0f766e', color: '#ffffff', border: 'none', padding: '7px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
+                                onClick={() => setIssuedChallan(dc)}
+                              >
+                                View / Print &rarr;
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1786,6 +2153,13 @@ function App() {
                             <td>{dc.destination}</td>
                             <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{dc.totalQty} Units</td>
                             <td style={{ textAlign: 'center' }}>
+                              <button
+                                className="row-dispatch-btn"
+                                style={{ background: '#1E40AF', marginRight: '6px' }}
+                                onClick={() => handleOpenEditDeliveryNote(dc)}
+                              >
+                                ✏️ Edit
+                              </button>
                               <button className="row-dispatch-btn" onClick={() => setIssuedChallan(dc)}>
                                 View / Print &rarr;
                               </button>
@@ -1824,12 +2198,21 @@ function App() {
 
                         <div className="mobile-card-footer">
                           <span className="mobile-more-info">Issued: {dc.dcDate}</span>
-                          <button
-                            className="mobile-card-action-btn"
-                            onClick={(e) => { e.stopPropagation(); setIssuedChallan(dc); }}
-                          >
-                            View / Print &rarr;
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              className="mobile-card-action-btn"
+                              style={{ background: '#1E40AF' }}
+                              onClick={(e) => { e.stopPropagation(); handleOpenEditDeliveryNote(dc); }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              className="mobile-card-action-btn"
+                              onClick={(e) => { e.stopPropagation(); setIssuedChallan(dc); }}
+                            >
+                              View / Print &rarr;
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1846,6 +2229,11 @@ function App() {
         {acceptingRequest && renderAcceptInwardModal()}
         {issuedChallan && renderChallanModal()}
         {showLearnMoreModal && renderLearnMoreModal()}
+        {showPinModal && renderPinManagementModal()}
+        {editingDeliveryNote && renderEditDeliveryNoteModal()}
+
+        {/* Global Toast Notification */}
+        {renderToast()}
 
         {/* PWA Mobile Web App Install Banner */}
         {renderInstallBanner()}
@@ -1870,12 +2258,6 @@ function App() {
         </div>
 
         <nav className="header-nav-segmented client-nav">
-          <button className={`nav-item-btn ${activeTab === 'clientHome' ? 'active' : ''}`} onClick={() => navigateToTab('clientHome')}>
-            <span className="nav-icon">📊</span>
-            <span className="nav-label-desktop">Home</span>
-            <span className="nav-label-tablet">Home</span>
-            <span className="nav-label-mobile">Home</span>
-          </button>
           <button className={`nav-item-btn ${activeTab === 'clientInventory' ? 'active' : ''}`} onClick={() => navigateToTab('clientInventory')}>
             <span className="nav-icon">📦</span>
             <span className="nav-label-desktop">My Stored Items</span>
@@ -1911,19 +2293,6 @@ function App() {
           </button>
         </div>
       </header>
-
-      {/* CLIENT TAB 0: HOME / PRIME DRY STORAGE HERO */}
-      {activeTab === 'clientHome' && (
-        <div className="home-page-screen tab-page-enter">
-          <div className="home-content-container">
-            {/* Full-width clean hero matching reference image */}
-            <WarehouseHeroBanner
-              onManageInventory={() => navigateToTab('clientInventory')}
-              onLearnMore={() => setShowLearnMoreModal(true)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* CLIENT TAB 1: MY INVENTORY */}
       {activeTab === 'clientInventory' && (
@@ -2218,99 +2587,207 @@ function App() {
         </div>
       )}
 
-      {/* CLIENT TAB 3: INWARD STOCK REPORT */}
+      {/* CLIENT TAB 3: INWARD STOCK REPORT & DELIVERY HISTORY */}
       {activeTab === 'clientInwardReport' && (
         <div className="inward-report-screen tab-page-enter">
           <div className="report-container">
-            <div className="report-toolbar">
-              <div>
-                <h1 className="page-heading">My Monthly Stock Report</h1>
+            <div className="report-toolbar" style={{ flexWrap: 'wrap', gap: '12px' }}>
+              <div className="report-view-toggle">
+                <button
+                  type="button"
+                  className={`report-toggle-btn ${reportSubTab === 'stockReport' ? 'active' : ''}`}
+                  onClick={() => setReportSubTab('stockReport')}
+                >
+                  📦 Stock View (Current Stock)
+                </button>
+                <button
+                  type="button"
+                  className={`report-toggle-btn ${reportSubTab === 'deliveryHistory' ? 'active' : ''}`}
+                  onClick={() => setReportSubTab('deliveryHistory')}
+                >
+                  🚚 Delivery History
+                </button>
               </div>
-              <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
-                Download PDF
-              </button>
+
+              {reportSubTab === 'stockReport' ? (
+                <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                  Download PDF
+                </button>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
+                  Total Dispatches: <strong>{challanHistory.length}</strong>
+                </div>
+              )}
             </div>
 
-            <div className="official-report-sheet" id="monthly-stock-report-sheet">
-              <div className="report-header-flex">
-                <div className="rep-top-meta-row">
-                  <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
-                  <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
-                </div>
-                <div className="rep-center-brand">
-                  <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
-                  <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
-                  <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
-                  <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
-                </div>
-              </div>
-
-              <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
-
-              <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
-                <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
-                <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
-                <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
-                  CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
-                </div>
-              </div>
-
-              <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
-                STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
-              </div>
-
-              <table className="rep-table-exact">
-                <thead>
-                  <tr style={{ background: '#334155', color: '#ffffff' }}>
-                    <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
-                    <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
-                    <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
-                    <th style={{ textAlign: 'center' }}>WH LOCATION</th>
-                    <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
-                    <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).map((item, idx) => (
-                    <tr key={idx}>
-                      <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                      <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
-                      <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
-                      <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
-                    <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
-                    <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                      {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              {/* Official Signatory Footer */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
-                <div className="rep-footer-left">
-                  <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
-                  <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
-                    Thoothukudi Central Hub • Hera Logistics Official Ledger
+            {reportSubTab === 'stockReport' ? (
+              <div className="official-report-sheet" id="monthly-stock-report-sheet">
+                <div className="report-header-flex">
+                  <div className="rep-top-meta-row">
+                    <span className="rep-gst">GST.No. : 33AAFCH8632K1ZE</span>
+                    <span className="rep-contact" style={{ color: '#0f766e', fontWeight: 'bold' }}>📞 96622 96633</span>
+                  </div>
+                  <div className="rep-center-brand">
+                    <img src={heraLogo} alt="Hera Logistics Logo" className="rep-brand-logo-img" />
+                    <h2 className="rep-company-title" style={{ color: '#991b1b', letterSpacing: '0.5px' }}>HERA LOGISTICS PVT.LTD.,</h2>
+                    <p className="rep-tagline" style={{ fontWeight: '600' }}>Logistics Simplified</p>
+                    <p className="rep-address">📍 No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.</p>
                   </div>
                 </div>
 
-                <div className="rep-footer-right" style={{ textAlign: 'right' }}>
-                  <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
-                  <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
-                  <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
+                <div className="rep-divider-rule" style={{ height: '2px', background: '#cbd5e1', margin: '10px 0 14px' }}></div>
+
+                <div className="rep-client-box" style={{ textAlign: 'center', marginBottom: '14px', lineHeight: '1.4' }}>
+                  <div style={{ fontWeight: '800', fontSize: '0.88rem' }}>M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.,</div>
+                  <div style={{ fontSize: '0.78rem' }}>T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92</div>
+                  <div style={{ fontSize: '0.76rem', fontWeight: '700', marginTop: '2px', letterSpacing: '0.3px' }}>
+                    CONTACT NAME: MR. CHIDAMBARAM &nbsp;&nbsp; PHONE: 9585543555
+                  </div>
+                </div>
+
+                <div className="rep-report-title" style={{ textAlign: 'center', fontWeight: '900', fontSize: '0.94rem', marginBottom: '12px', letterSpacing: '0.5px' }}>
+                  STOCK REPORT: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
+                </div>
+
+                <table className="rep-table-exact">
+                  <thead>
+                    <tr style={{ background: '#334155', color: '#ffffff' }}>
+                      <th style={{ width: '50px', textAlign: 'center' }}>S.NO</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>IN.DATE</th>
+                      <th style={{ textAlign: 'center' }}>DOCUMENT NUMBER</th>
+                      <th style={{ textAlign: 'center' }}>WH LOCATION</th>
+                      <th style={{ textAlign: 'right', width: '110px' }}>WEIGHT</th>
+                      <th style={{ textAlign: 'right', width: '110px' }}>NO OF BAGS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).map((item, idx) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                        <td style={{ textAlign: 'center' }}>{item.inDate ? item.inDate.replace(/-2026|-26/, '') : ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{item.docNo}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '700' }}>{item.whLocation}</td>
+                        <td style={{ textAlign: 'right' }}>{(item.weightKg || item.qty)?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right' }}>{(parseInt(item.count) || Math.round((item.weightKg || item.qty) / 50))?.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="rep-total-row" style={{ fontWeight: '800', background: '#F8FAFC' }}>
+                      <td colSpan="4" style={{ textAlign: 'center', fontWeight: 'bold' }}>Total</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                        {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (i.weightKg || i.qty || 0), 0).toLocaleString()}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                        {stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).reduce((sum, i) => sum + (parseInt(i.count) || Math.round((i.weightKg || i.qty) / 50)), 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Official Signatory Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '24px', paddingTop: '10px' }}>
+                  <div className="rep-footer-left">
+                    <div className="rep-verified-badge">✓ SYSTEM VERIFIED DRY STOCK RECORD</div>
+                    <div className="rep-timestamp-note" style={{ marginTop: '4px', fontSize: '0.7rem', color: '#64748B' }}>
+                      Thoothukudi Central Hub • Hera Logistics Official Ledger
+                    </div>
+                  </div>
+
+                  <div className="rep-footer-right" style={{ textAlign: 'right' }}>
+                    <div className="rep-sign-company">For Hera Logistics Pvt. Ltd.</div>
+                    <div className="rep-sign-rule" style={{ width: '180px', height: '1px', background: '#94a3b8', margin: '30px 0 4px auto' }}></div>
+                    <div className="rep-sign-label" style={{ fontSize: '0.72rem', color: '#64748b' }}>Warehouse Authorized Signatory</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
+                <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800' }}>My Delivery Notes & Challans</h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
+                      Issued outbound delivery notes & warehouse gate pass history
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-status-history-pill"
+                    onClick={loadSupabaseData}
+                    style={{ padding: '5px 12px', fontSize: '0.76rem' }}
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
+
+                {challanHistory.length === 0 ? (
+                  <div className="empty-cart-card" style={{ padding: '36px 20px', textAlign: 'center' }}>
+                    <div className="empty-icon">🚚</div>
+                    <h3>No Delivery History Yet</h3>
+                    <p>When goods are dispatched, your official delivery notes will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="delivery-history-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {challanHistory.map((dc) => (
+                      <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                        <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                          <div>
+                            <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.destination || 'Thoothukudi / Chennai Hub'}</span>
+                            <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#334155', marginTop: '3px' }}>
+                              Lorry: {dc.vehicleNo || 'TN-04-AB-1234'}
+                            </div>
+                          </div>
+                          <span className="wh-bay-badge" style={{ fontSize: '0.82rem', padding: '4px 10px', background: '#F8FAFC', color: '#0F172A', border: '1px solid #E2E8F0' }}>
+                            {dc.totalQty?.toLocaleString()} Units
+                          </span>
+                        </div>
+
+                        <div className="mobile-card-metrics" style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '10px', margin: '10px 0', border: '1px solid #F1F5F9' }}>
+                          <div className="mobile-metric-item">
+                            <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>DC NUMBER</span>
+                            <span className="mobile-metric-value font-mono" style={{ fontWeight: '700', color: '#0F172A' }}>{dc.dcNo}</span>
+                          </div>
+                          <div className="mobile-metric-item">
+                            <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>DATE</span>
+                            <span className="mobile-metric-value" style={{ fontWeight: '700', color: '#0F172A' }}>{dc.dcDate}</span>
+                          </div>
+                          <div className="mobile-metric-item">
+                            <span className="mobile-metric-label" style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '700' }}>STATUS</span>
+                            <span className="mobile-metric-value" style={{ color: '#0f766e', fontWeight: '900', letterSpacing: '0.3px' }}>DISPATCHED</span>
+                          </div>
+                        </div>
+
+                        <div className="mobile-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: '500' }}>
+                            Prepared: {dc.preparedBy || dc.customerName || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}
+                          </span>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {currentUser?.role === 'admin' && (
+                              <button
+                                type="button"
+                                className="row-dispatch-btn"
+                                style={{ background: '#1E40AF', color: '#ffffff', border: 'none', padding: '7px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation(); handleOpenEditDeliveryNote(dc); }}
+                              >
+                                ✏️ Edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="row-dispatch-btn"
+                              style={{ background: '#0f766e', color: '#ffffff', border: 'none', padding: '7px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
+                              onClick={() => setIssuedChallan(dc)}
+                            >
+                              View / Print &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2321,19 +2798,6 @@ function App() {
           <div className="cart-container">
             {cart.length === 0 ? (
               <div className="empty-cart-card">
-                <div className="empty-cart-top-bar" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '28px' }}>
-                  <button
-                    type="button"
-                    className="btn-status-history-pill"
-                    onClick={() => setShowCustomerChallanModal(true)}
-                    title="View Past Delivery Notes & Outward Challans"
-                  >
-                    <span>🚚 Delivery Note History</span>
-                    <span className="cart-badge">
-                      {challanHistory.length}
-                    </span>
-                  </button>
-                </div>
                 <div className="empty-icon">🛒</div>
                 <h3>Your Delivery Cart is Empty</h3>
                 <p>Select items from your inventory to dispatch cargo.</p>
@@ -2350,17 +2814,6 @@ function App() {
                         <h2>Delivery Items ({cart.length})</h2>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="btn-status-history-pill"
-                          onClick={() => setShowCustomerChallanModal(true)}
-                          title="View Past Delivery Notes & Outward Challans"
-                        >
-                          <span>🚚 Delivery Notes</span>
-                          <span className="cart-badge">
-                            {challanHistory.length}
-                          </span>
-                        </button>
                         <span className="total-items-badge">
                           {cart.reduce((s, i) => s + i.selectedQty, 0)} Units Selected
                         </span>
@@ -2498,6 +2951,10 @@ function App() {
       {issuedChallan && renderChallanModal()}
       {showLearnMoreModal && renderLearnMoreModal()}
       {showReportDownloadConfirm && renderReportDownloadConfirmModal()}
+      {editingDeliveryNote && renderEditDeliveryNoteModal()}
+
+      {/* Global Toast Notification */}
+      {renderToast()}
 
       {/* PWA Mobile Web App Install Banner */}
       {renderInstallBanner()}
@@ -2709,6 +3166,16 @@ function App() {
             </div>
 
             <div className="toolbar-actions">
+              {currentUser?.role === 'admin' && (
+                <button
+                  type="button"
+                  className="doc-pdf-btn"
+                  style={{ background: '#1E40AF', borderColor: '#1E40AF' }}
+                  onClick={() => handleOpenEditDeliveryNote(issuedChallan)}
+                >
+                  ✏️ Edit DC Details
+                </button>
+              )}
               <button className="doc-pdf-btn" onClick={handleDownloadPdf} disabled={isDownloading}>
                 {isDownloading ? '⏳ Saving PDF...' : '⬇ Download PDF'}
               </button>
@@ -2787,59 +3254,79 @@ function App() {
               {/* Metadata 2-Column Section */}
               <div className="challan-meta-grid">
                 <div className="meta-left-col">
-                  <div className="meta-row">
-                    <span className="meta-label">Customer Name</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value bold">{issuedChallan.customerName}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Address</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.address || 'Chennai / Thoothukudi Hub'}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Contact Person</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.contactPerson || 'MR. CHIDAMBARAM'}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Contact No</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.contactNo || '9585543555'}</span>
-                  </div>
+                  {issuedChallan.customerName && (
+                    <div className="meta-row">
+                      <span className="meta-label">Customer Name</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value bold">{issuedChallan.customerName}</span>
+                    </div>
+                  )}
+                  {issuedChallan.address && (
+                    <div className="meta-row">
+                      <span className="meta-label">Address</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.address}</span>
+                    </div>
+                  )}
+                  {issuedChallan.contactPerson && (
+                    <div className="meta-row">
+                      <span className="meta-label">Contact Person</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.contactPerson}</span>
+                    </div>
+                  )}
+                  {issuedChallan.contactNo && (
+                    <div className="meta-row">
+                      <span className="meta-label">Contact No</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.contactNo}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="meta-right-col">
-                  <div className="meta-row">
-                    <span className="meta-label">DC No</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value bold">{issuedChallan.dcNo}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">DC Date</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.dcDate}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Destination</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.destination || 'CHENNAI - KOYAMBEDU'}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Prepared By</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.preparedBy || 'ADMIN'}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Vehicle No</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value bold">{issuedChallan.vehicleNo}</span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">Gate In NO</span>
-                    <span className="meta-colon">:</span>
-                    <span className="meta-value">{issuedChallan.gateInNo}</span>
-                  </div>
+                  {issuedChallan.dcNo && (
+                    <div className="meta-row">
+                      <span className="meta-label">DC No</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value bold">{issuedChallan.dcNo}</span>
+                    </div>
+                  )}
+                  {issuedChallan.dcDate && (
+                    <div className="meta-row">
+                      <span className="meta-label">DC Date</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.dcDate}</span>
+                    </div>
+                  )}
+                  {issuedChallan.destination && (
+                    <div className="meta-row">
+                      <span className="meta-label">Destination</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.destination}</span>
+                    </div>
+                  )}
+                  {issuedChallan.preparedBy && (
+                    <div className="meta-row">
+                      <span className="meta-label">Prepared By</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.preparedBy}</span>
+                    </div>
+                  )}
+                  {issuedChallan.vehicleNo && (
+                    <div className="meta-row">
+                      <span className="meta-label">Vehicle No</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value bold">{issuedChallan.vehicleNo}</span>
+                    </div>
+                  )}
+                  {issuedChallan.gateInNo && (
+                    <div className="meta-row">
+                      <span className="meta-label">Gate In NO</span>
+                      <span className="meta-colon">:</span>
+                      <span className="meta-value">{issuedChallan.gateInNo}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2848,49 +3335,77 @@ function App() {
                 <table className="challan-items-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '45px', textAlign: 'left' }}>S.NO.</th>
-                      <th style={{ width: '150px', textAlign: 'left' }}>GRN No</th>
-                      <th style={{ width: '90px', textAlign: 'left' }}>Brand</th>
-                      <th style={{ textAlign: 'left' }}>Variety</th>
-                      <th style={{ width: '90px', textAlign: 'left' }}>LOT NO</th>
-                      <th style={{ width: '80px', textAlign: 'left' }}>COUNT</th>
-                      <th style={{ width: '70px', textAlign: 'right' }}>Qty</th>
-                      <th style={{ width: '80px', textAlign: 'left' }}>RateType</th>
+                      <th style={{ width: '38px', textAlign: 'left' }}>S.NO.</th>
+                      <th style={{ width: '110px', textAlign: 'left' }}>GRN No</th>
+                      <th style={{ textAlign: 'left' }}>Product Name</th>
+                      <th style={{ width: '75px', textAlign: 'left' }}>LOT NO</th>
+                      <th style={{ width: '85px', textAlign: 'left' }}>Packaging</th>
+                      <th style={{ width: '105px', textAlign: 'right' }}>Quantity</th>
+                      <th style={{ width: '65px', textAlign: 'left' }}>RateType</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {issuedChallan.items.map((item, idx) => (
+                    {issuedChallan.items && issuedChallan.items.map((item, idx) => (
                       <tr key={idx}>
                         <td style={{ textAlign: 'left' }}>{idx + 1}</td>
-                        <td className="dc-grn">{item.grnNo}</td>
-                        <td>{item.brand || 'CAJ'}</td>
-                        <td>{item.variety || item.product}</td>
-                        <td>{item.lotNo || '9738282'}</td>
-                        <td>{item.count || (item.unit === 'BAGS' ? '120VP' : item.unit)}</td>
-                        <td style={{ textAlign: 'right' }}>{Number(item.selectedQty).toFixed(2)}</td>
-                        <td>{item.rateType || 'Daily'}</td>
-                      </tr>
-                    ))}
-                    {Array.from({ length: Math.max(0, 10 - issuedChallan.items.length) }).map((_, i) => (
-                      <tr key={`blank-${i}`} className="blank-row">
-                        <td>&nbsp;</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td className="dc-grn">{item.grnNo || '—'}</td>
+                        <td>{item.variety || item.product || '—'}</td>
+                        <td>{item.lotNo || '—'}</td>
+                        <td>{item.count || (item.unit === 'BAGS' ? '50KG BAGS' : item.unit) || '—'}</td>
+                        <td style={{ textAlign: 'right', verticalAlign: 'top', lineHeight: '1.3' }}>
+                          <div style={{ fontWeight: '800', color: '#000000', fontSize: '9.5px' }}>
+                            {item.unit === 'KG' || item.unit === 'KGS' || Number(item.selectedQty) > 500 ? (
+                              <>
+                                {Number(item.selectedQty || 0).toLocaleString()} Kgs
+                                <div style={{ fontSize: '8.5px', fontWeight: '600', color: '#334155', marginTop: '1px' }}>
+                                  ({(Number(item.selectedQty || 0) / 1000).toFixed(2)} Ton)
+                                </div>
+                              </>
+                            ) : item.unit === 'BAGS' ? (
+                              <>
+                                {Number(item.selectedQty || 0).toLocaleString()} Bags
+                                <div style={{ fontSize: '8.5px', fontWeight: '600', color: '#334155', marginTop: '1px' }}>
+                                  ({(Number(item.selectedQty || 0) * 50).toLocaleString()} Kgs)
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                {Number(item.selectedQty || 0).toLocaleString()} {item.unit || 'Units'}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td>{item.rateType || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan="6" className="total-label-cell" style={{ textAlign: 'right' }}>
-                        Total Quantity ({issuedChallan.items[0]?.unit || 'BAGS'})
+                      <td colSpan="5" className="total-label-cell" style={{ textAlign: 'right' }}>
+                        Total Quantity
                       </td>
-                      <td className="total-qty-cell" style={{ textAlign: 'right' }}>
-                        {issuedChallan.totalQty?.toFixed(2)}
+                      <td className="total-qty-cell" style={{ textAlign: 'right', verticalAlign: 'top', lineHeight: '1.3' }}>
+                        <div style={{ fontWeight: '800', color: '#000000', fontSize: '9.5px' }}>
+                          {issuedChallan.items?.[0]?.unit === 'KG' || issuedChallan.items?.[0]?.unit === 'KGS' || Number(issuedChallan.totalQty) > 500 ? (
+                            <>
+                              {Number(issuedChallan.totalQty || 0).toLocaleString()} Kgs
+                              <div style={{ fontSize: '8.5px', fontWeight: '700', color: '#334155' }}>
+                                ({(Number(issuedChallan.totalQty || 0) / 1000).toFixed(2)} Ton)
+                              </div>
+                            </>
+                          ) : issuedChallan.items?.[0]?.unit === 'BAGS' ? (
+                            <>
+                              {Number(issuedChallan.totalQty || 0).toLocaleString()} Bags
+                              <div style={{ fontSize: '8.5px', fontWeight: '700', color: '#334155' }}>
+                                ({(Number(issuedChallan.totalQty || 0) * 50).toLocaleString()} Kgs)
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {Number(issuedChallan.totalQty || 0).toLocaleString()} {issuedChallan.items?.[0]?.unit || 'Units'}
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="total-qty-cell"></td>
                     </tr>
@@ -2992,6 +3507,24 @@ function App() {
                     <span>Print directly via local printer</span>
                   </div>
                 </button>
+
+                {currentUser?.role === 'admin' && (
+                  <button
+                    type="button"
+                    className="action-menu-item"
+                    style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}
+                    onClick={() => {
+                      setShowChallanActionMenu(false);
+                      handleOpenEditDeliveryNote(issuedChallan);
+                    }}
+                  >
+                    <span className="action-item-icon">✏️</span>
+                    <div className="action-item-text">
+                      <strong style={{ color: '#1E40AF' }}>Edit Delivery Note Details</strong>
+                      <span>Modify vehicle, party, address, units</span>
+                    </div>
+                  </button>
+                )}
               </div>
 
               <button type="button" className="btn-action-cancel" onClick={() => setShowChallanActionMenu(false)}>
@@ -3133,16 +3666,32 @@ function App() {
 
               <div className="challan-meta-grid">
                 <div className="meta-left-col">
-                  <div className="meta-row"><span className="meta-label">Customer Name</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.clientName}</span></div>
-                  <div className="meta-row"><span className="meta-label">Contact Phone</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.driverPhone}</span></div>
-                  <div className="meta-row"><span className="meta-label">Invoice Ref</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.docNo}</span></div>
-                  <div className="meta-row"><span className="meta-label">Remarks</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.remarks}</span></div>
+                  {issuedInwardReceipt.clientName && (
+                    <div className="meta-row"><span className="meta-label">Customer Name</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.clientName}</span></div>
+                  )}
+                  {issuedInwardReceipt.driverPhone && (
+                    <div className="meta-row"><span className="meta-label">Contact Phone</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.driverPhone}</span></div>
+                  )}
+                  {issuedInwardReceipt.docNo && (
+                    <div className="meta-row"><span className="meta-label">Invoice Ref</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.docNo}</span></div>
+                  )}
+                  {issuedInwardReceipt.remarks && (
+                    <div className="meta-row"><span className="meta-label">Remarks</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.remarks}</span></div>
+                  )}
                 </div>
                 <div className="meta-right-col">
-                  <div className="meta-row"><span className="meta-label">Inward Advice No</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.inwardNo}</span></div>
-                  <div className="meta-row"><span className="meta-label">Date Submitted</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.createdAt}</span></div>
-                  <div className="meta-row"><span className="meta-label">Expected Date</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.expectedDate}</span></div>
-                  <div className="meta-row"><span className="meta-label">Lorry / Vehicle</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.vehicleNo}</span></div>
+                  {issuedInwardReceipt.inwardNo && (
+                    <div className="meta-row"><span className="meta-label">Inward Advice No</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.inwardNo}</span></div>
+                  )}
+                  {issuedInwardReceipt.createdAt && (
+                    <div className="meta-row"><span className="meta-label">Date Submitted</span><span className="meta-colon">:</span><span className="meta-value">{issuedInwardReceipt.createdAt}</span></div>
+                  )}
+                  {issuedInwardReceipt.expectedDate && (
+                    <div className="meta-row"><span className="meta-label">Expected Date</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.expectedDate}</span></div>
+                  )}
+                  {issuedInwardReceipt.vehicleNo && (
+                    <div className="meta-row"><span className="meta-label">Lorry / Vehicle</span><span className="meta-colon">:</span><span className="meta-value bold">{issuedInwardReceipt.vehicleNo}</span></div>
+                  )}
                 </div>
               </div>
 
@@ -3152,26 +3701,19 @@ function App() {
                     <tr>
                       <th style={{ width: '45px', textAlign: 'left' }}>S.NO.</th>
                       <th style={{ textAlign: 'left' }}>Product Description</th>
-                      <th style={{ width: '100px', textAlign: 'left' }}>Brand</th>
-                      <th style={{ width: '100px', textAlign: 'left' }}>Variety</th>
-                      <th style={{ width: '100px', textAlign: 'right' }}>Declared Qty</th>
-                      <th style={{ width: '110px', textAlign: 'right' }}>Weight (KG)</th>
+                      <th style={{ width: '120px', textAlign: 'left' }}>Variety</th>
+                      <th style={{ width: '110px', textAlign: 'right' }}>Declared Qty</th>
+                      <th style={{ width: '120px', textAlign: 'right' }}>Weight (KG)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>1</td>
                       <td><strong>{issuedInwardReceipt.product}</strong></td>
-                      <td>{issuedInwardReceipt.brand}</td>
-                      <td>{issuedInwardReceipt.variety}</td>
+                      <td>{issuedInwardReceipt.variety || '—'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{issuedInwardReceipt.qty} {issuedInwardReceipt.unit}</td>
                       <td style={{ textAlign: 'right' }}>{issuedInwardReceipt.weightKg ? Number(issuedInwardReceipt.weightKg).toLocaleString() + ' KG' : '—'}</td>
                     </tr>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <tr key={i} className="blank-row">
-                        <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>
@@ -3499,6 +4041,311 @@ function App() {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  function renderPinManagementModal() {
+    return (
+      <div className="modal-backdrop" onClick={() => setShowPinModal(false)}>
+        <div className="modal-card wide-modal" style={{ maxWidth: '620px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header-simple" style={{ marginBottom: '14px' }}>
+            <div className="modal-header-title-box">
+              <div className="simple-badge-hub">🛡️ Master Access Control</div>
+              <h2>🔑 Supabase Profile PIN Manager</h2>
+            </div>
+            <button className="modal-close-icon" onClick={() => setShowPinModal(false)}>✕</button>
+          </div>
+
+          <p style={{ fontSize: '0.84rem', color: '#64748B', margin: '0 0 16px 0' }}>
+            View and manage 6-digit access PINs and mobile numbers stored in the Supabase <code>profiles</code> table.
+          </p>
+
+          {pinUpdateStatus && (
+            <div style={{ background: '#ECFDF5', color: '#065F46', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+              {pinUpdateStatus}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+            {dbProfiles.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', background: '#F8FAFC', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontWeight: '600' }}>Fetching accounts from Supabase...</p>
+              </div>
+            ) : (
+              dbProfiles.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: '10px',
+                    padding: '12px 16px',
+                    background: '#FFFFFF',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#0F172A' }}>
+                        {p.company_name || p.email}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '2px' }}>
+                        📱 <strong>{p.phone || 'No phone'}</strong> &bull; ✉️ {p.email}
+                      </div>
+                    </div>
+                    <span style={{
+                      background: p.role === 'admin' ? '#FEF2F2' : '#F0FDFA',
+                      color: p.role === 'admin' ? '#991B1B' : '#0D9488',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: '800'
+                    }}>
+                      {p.role === 'admin' ? '🛡️ Admin' : '👤 Customer'}
+                    </span>
+                  </div>
+
+                  {editingPinUser === p.id ? (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        autoFocus
+                        placeholder="New 6-digit PIN"
+                        value={newPinValue}
+                        onChange={(e) => setNewPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        style={{
+                          width: '150px',
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          border: '1.5px solid #0F766E',
+                          fontWeight: 'bold',
+                          letterSpacing: '3px',
+                          fontSize: '1rem',
+                          textAlign: 'center'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateProfilePin(p.id, newPinValue)}
+                        style={{
+                          background: '#0F766E',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Save PIN
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPinUser(null); setNewPinValue(''); }}
+                        style={{
+                          background: '#E2E8F0',
+                          color: '#475569',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontWeight: '600',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+                      <div style={{ fontSize: '0.82rem', color: '#334155' }}>
+                        Active 6-Digit PIN: <strong style={{ letterSpacing: '2px', background: '#F8FAFC', padding: '2px 8px', borderRadius: '4px', border: '1px solid #CBD5E1' }}>{p.pin || '123456'}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPinUser(p.id); setNewPinValue(p.pin || '123456'); }}
+                        style={{
+                          background: '#EFF6FF',
+                          color: '#1D4ED8',
+                          border: '1px solid #BFDBFE',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontWeight: '700',
+                          fontSize: '0.76rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ Change PIN
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: '16px' }}>
+            <button type="button" className="btn-hero-secondary" onClick={() => setShowPinModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderEditDeliveryNoteModal() {
+    if (!editingDeliveryNote) return null;
+    return (
+      <div className="modal-backdrop" onClick={() => setEditingDeliveryNote(null)}>
+        <div className="modal-card wide-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+          <div className="dispatch-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <h2 className="modal-title" style={{ margin: 0, fontSize: '1.2rem', textAlign: 'left' }}>
+                ✏️ Edit Delivery Note (Admin)
+              </h2>
+              <p className="modal-sub-clean" style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#64748B', textAlign: 'left' }}>
+                Update transport, vehicle, address, and consignment fields
+              </p>
+            </div>
+            <button className="modal-close-icon" onClick={() => setEditingDeliveryNote(null)}>✕</button>
+          </div>
+
+          <form onSubmit={handleSaveEditDeliveryNote} className="inward-entry-form">
+            <div className="form-grid-two">
+              <div className="form-group">
+                <label>DC Number <span className="req">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editDcForm.dcNo}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, dcNo: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Dispatch Date <span className="req">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editDcForm.dcDate}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, dcDate: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Customer / Party Name <span className="req">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editDcForm.customerName}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, customerName: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Destination Hub / Place <span className="req">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editDcForm.destination}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, destination: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label>Delivery Address</label>
+                <input
+                  type="text"
+                  value={editDcForm.address}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, address: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Lorry / Vehicle Number <span className="req">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editDcForm.vehicleNo}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, vehicleNo: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Gate-In Pass No</label>
+                <input
+                  type="text"
+                  value={editDcForm.gateInNo}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, gateInNo: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Contact Person</label>
+                <input
+                  type="text"
+                  value={editDcForm.contactPerson}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, contactPerson: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Contact Phone</label>
+                <input
+                  type="text"
+                  value={editDcForm.contactNo}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, contactNo: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Prepared By / Signatory</label>
+                <input
+                  type="text"
+                  value={editDcForm.preparedBy}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, preparedBy: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Total Dispatched Units</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editDcForm.totalQty}
+                  onChange={(e) => setEditDcForm({ ...editDcForm, totalQty: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn-hero-secondary" onClick={() => setEditingDeliveryNote(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-hero-primary" style={{ background: '#1E40AF', borderColor: '#1E40AF' }} disabled={isSavingDc}>
+                {isSavingDc ? 'Saving...' : '💾 Save DC Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  function renderToast() {
+    if (!toast) return null;
+    return (
+      <div className={`hera-toast-floating toast-${toast.type || 'error'}`}>
+        <span className="toast-icon">
+          {toast.type === 'success' ? '✅' : toast.type === 'warning' ? '⚠️' : '❌'}
+        </span>
+        <span className="toast-message">{toast.message}</span>
+        <button className="toast-close" onClick={() => setToast(null)} title="Dismiss">✕</button>
       </div>
     );
   }

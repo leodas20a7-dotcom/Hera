@@ -669,6 +669,30 @@ html, body {
   flex-shrink: 0;
 }
 
+.btn-admin-manage-pins {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 10px;
+  background: #F0FDFA;
+  border: 1px solid #99F6E4;
+  color: #0F766E;
+  border-radius: var(--radius-pill);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-admin-manage-pins:hover {
+  background: #CCFBF1;
+  border-color: #5EEAD4;
+  color: #115E59;
+  transform: translateY(-1px);
+}
+
 .user-profile-capsule {
   display: inline-flex;
   align-items: center;
@@ -2179,24 +2203,27 @@ html, body {
 .challan-view-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(3px);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  padding: 12px;
-  overflow-y: auto;
+  padding: 10px;
+  overflow: hidden;
 }
 
 .challan-modal-container {
   background: #FFFFFF;
   border-radius: var(--radius-card);
-  max-width: 840px;
+  max-width: 780px;
   width: 100%;
-  max-height: 94vh;
-  overflow-y: auto;
-  box-shadow: var(--shadow-hover);
+  max-height: calc(100vh - 20px);
+  height: min(94vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
 .challan-toolbar {
@@ -2208,8 +2235,7 @@ html, body {
   color: #FFFFFF;
   border-top-left-radius: var(--radius-card);
   border-top-right-radius: var(--radius-card);
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 10;
   gap: 8px;
 }
@@ -2278,21 +2304,25 @@ html, body {
 
 .challan-printable-sheet {
   background: #FFFFFF;
-  padding: 16px 20px;
+  padding: 8px 12px;
   color: #000000;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .challan-template-frame {
   border: 1.5px solid #000000;
   background: #FFFFFF;
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
 }
 
 .challan-header-grid {
   display: flex;
   justify-content: space-between;
   border-bottom: 1.5px solid #000000;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  flex-shrink: 0;
 }
 
 .challan-company-left {
@@ -2302,15 +2332,15 @@ html, body {
 }
 
 .challan-brand-logo-img {
-  height: 42px;
-  max-width: 150px;
+  height: 38px;
+  max-width: 140px;
   object-fit: contain;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: block;
 }
 
 .challan-reg-meta {
-  font-size: 9.5px;
+  font-size: 9px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -2338,7 +2368,7 @@ html, body {
 }
 
 .company-full-name {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   color: #000000;
   text-align: right;
@@ -2346,21 +2376,22 @@ html, body {
 }
 
 .company-hub-address {
-  font-size: 9px;
+  font-size: 8.5px;
   color: #222222;
   text-align: right;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
 .challan-title-bar {
   text-align: center;
   background: #E5E7EB;
   border-bottom: 1.5px solid #000000;
-  padding: 4px;
+  padding: 3px;
+  flex-shrink: 0;
 }
 
 .challan-title-bar h2 {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 900;
   letter-spacing: 1.5px;
   color: #000000;
@@ -2370,20 +2401,21 @@ html, body {
 .challan-meta-grid {
   display: grid;
   grid-template-columns: 1.35fr 1fr;
-  gap: 16px;
-  font-size: 9.5px;
-  padding: 8px 14px;
+  gap: 12px;
+  font-size: 9px;
+  padding: 6px 12px;
   border-bottom: 1.5px solid #000000;
+  flex-shrink: 0;
 }
 
 .meta-row {
   display: flex;
-  margin-bottom: 3px;
-  line-height: 1.3;
+  margin-bottom: 2px;
+  line-height: 1.25;
 }
 
 .meta-label {
-  width: 95px;
+  width: 90px;
   font-weight: 600;
   color: #000000;
   flex-shrink: 0;
@@ -2406,6 +2438,10 @@ html, body {
 
 .challan-table-container {
   width: 100%;
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
 }
 
 .challan-items-table {
@@ -2413,12 +2449,14 @@ html, body {
   border-collapse: collapse;
   font-size: 9.5px;
   border-bottom: 1.5px solid #000000;
+  flex: 1;
+  height: 100%;
 }
 
 .challan-items-table th {
   border-right: 1px solid #000000;
   border-bottom: 1.5px solid #000000;
-  padding: 4px 6px;
+  padding: 3px 5px;
   background: #FFFFFF;
   font-weight: 800;
   color: #000000;
@@ -2428,37 +2466,44 @@ html, body {
   border-right: none;
 }
 
+.challan-items-table tbody {
+  height: 100%;
+}
+
+.challan-items-table tbody tr {
+  height: 100%;
+}
+
 .challan-items-table td {
   border-right: 1px solid #000000;
-  padding: 4px 6px;
+  padding: 5px 6px;
   color: #000000;
+  vertical-align: top;
 }
 
 .challan-items-table td:last-child {
   border-right: none;
 }
 
-.blank-row td {
-  height: 22px;
-}
-
 .total-label-cell {
   border-top: 1.5px solid #000000;
   font-weight: 800;
-  padding: 4px 6px;
+  padding: 3px 6px;
 }
 
 .total-qty-cell {
   border-top: 1.5px solid #000000;
   font-weight: 800;
-  padding: 4px 6px;
+  padding: 3px 6px;
 }
 
 .challan-footer-grid {
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
-  padding: 8px 14px 12px 14px;
+  font-size: 9px;
+  padding: 6px 12px 8px 12px;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .remarks-header-row {
@@ -4586,6 +4631,159 @@ html, body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* =========================================================================
+   COMPACT BOTTOM-RIGHT TOAST NOTIFICATION
+   ========================================================================= */
+.hera-toast-floating {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  top: auto;
+  left: auto;
+  transform: none;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #0F172A;
+  color: #FFFFFF;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08);
+  animation: slideUpToastRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  max-width: 320px;
+  width: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.hera-toast-floating.toast-error {
+  background: #991B1B;
+  border-color: #EF4444;
+  color: #FEF2F2;
+}
+
+.hera-toast-floating.toast-success {
+  background: #065F46;
+  border-color: #34D399;
+  color: #ECFDF5;
+}
+
+.hera-toast-floating.toast-warning {
+  background: #92400E;
+  border-color: #FBBF24;
+  color: #FEF3C7;
+}
+
+.toast-icon {
+  font-size: 0.92rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  line-height: 1.25;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 600px) {
+  .hera-toast-floating {
+    bottom: 16px;
+    right: 16px;
+    padding: 7px 12px;
+    font-size: 0.76rem;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  line-height: 1;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-close:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideUpToastRight {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================================================================
+   REPORT SUB-TAB BUTTONS (STOCK VIEW & DELIVERY HISTORY)
+   ========================================================================= */
+.report-view-toggle {
+  display: inline-flex;
+  background: #E2E8F0;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.report-toggle-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #475569;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-toggle-btn:hover {
+  color: #0F172A;
+}
+
+.report-toggle-btn.active {
+  background: #FFFFFF;
+  color: #991B1B;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 600px) {
+  .report-view-toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .report-toggle-btn {
+    padding: 8px 10px;
+    font-size: 0.76rem;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+
 
 
 
