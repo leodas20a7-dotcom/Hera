@@ -3236,41 +3236,32 @@ function App() {
                   <div className="meta-row">
                     <span className="meta-label">From</span>
                     <span className="meta-colon">:</span>
-                    <span className="meta-value bold">
-                      {issuedChallan.preparedBy || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}
-                    </span>
-                  </div>
-                  <div className="meta-row">
-                    <span className="meta-label">From Address</span>
-                    <span className="meta-colon">:</span>
                     <span className="meta-value">
+                      <strong className="bold">{issuedChallan.preparedBy || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}</strong>
+                      <br />
                       #328, 2nd floor, Ten Square Mall, Jawaharlal Nehru Road, Koyambedu, Chennai-600107
                     </span>
                   </div>
-                  <div className="meta-row" style={{ marginTop: '3px' }}>
-                    <span className="meta-label">To (Party)</span>
+                  <div className="meta-row" style={{ marginTop: '5px' }}>
+                    <span className="meta-label">To</span>
                     <span className="meta-colon">:</span>
-                    <span className="meta-value bold">{issuedChallan.customerName || 'GLOBAL ENTERPRISES'}</span>
+                    <span className="meta-value">
+                      <strong className="bold">{issuedChallan.customerName || 'GLOBAL ENTERPRISES'}</strong>
+                      {issuedChallan.address && (
+                        <>
+                          <br />
+                          {issuedChallan.address}
+                        </>
+                      )}
+                    </span>
                   </div>
-                  {issuedChallan.address && (
-                    <div className="meta-row">
-                      <span className="meta-label">To Address</span>
-                      <span className="meta-colon">:</span>
-                      <span className="meta-value">{issuedChallan.address}</span>
-                    </div>
-                  )}
                   {issuedChallan.contactPerson && (
-                    <div className="meta-row">
-                      <span className="meta-label">Contact Person</span>
+                    <div className="meta-row" style={{ marginTop: '2px' }}>
+                      <span className="meta-label">Contact</span>
                       <span className="meta-colon">:</span>
-                      <span className="meta-value">{issuedChallan.contactPerson}</span>
-                    </div>
-                  )}
-                  {issuedChallan.contactNo && (
-                    <div className="meta-row">
-                      <span className="meta-label">Contact No</span>
-                      <span className="meta-colon">:</span>
-                      <span className="meta-value">{issuedChallan.contactNo}</span>
+                      <span className="meta-value">
+                        {issuedChallan.contactPerson} {issuedChallan.contactNo ? `(${issuedChallan.contactNo})` : ''}
+                      </span>
                     </div>
                   )}
                 </div>
