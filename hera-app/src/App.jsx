@@ -3233,16 +3233,28 @@ function App() {
               {/* Metadata 2-Column Section */}
               <div className="challan-meta-grid">
                 <div className="meta-left-col">
-                  {issuedChallan.customerName && (
-                    <div className="meta-row">
-                      <span className="meta-label">Customer Name</span>
-                      <span className="meta-colon">:</span>
-                      <span className="meta-value bold">{issuedChallan.customerName}</span>
-                    </div>
-                  )}
+                  <div className="meta-row">
+                    <span className="meta-label">From</span>
+                    <span className="meta-colon">:</span>
+                    <span className="meta-value bold">
+                      {issuedChallan.preparedBy || 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'}
+                    </span>
+                  </div>
+                  <div className="meta-row">
+                    <span className="meta-label">From Address</span>
+                    <span className="meta-colon">:</span>
+                    <span className="meta-value">
+                      #328, 2nd floor, Ten Square Mall, Jawaharlal Nehru Road, Koyambedu, Chennai-600107
+                    </span>
+                  </div>
+                  <div className="meta-row" style={{ marginTop: '3px' }}>
+                    <span className="meta-label">To (Party)</span>
+                    <span className="meta-colon">:</span>
+                    <span className="meta-value bold">{issuedChallan.customerName || 'GLOBAL ENTERPRISES'}</span>
+                  </div>
                   {issuedChallan.address && (
                     <div className="meta-row">
-                      <span className="meta-label">Address</span>
+                      <span className="meta-label">To Address</span>
                       <span className="meta-colon">:</span>
                       <span className="meta-value">{issuedChallan.address}</span>
                     </div>
