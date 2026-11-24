@@ -1557,12 +1557,7 @@ function App() {
     }
   };
 
-  // Filter & sort stocks datewise (Admin & Client, Hera & Kern)
-  const parseStockDateMs = (d) => {
-    if (!d) return 0;
-    const t = Date.parse(String(d).replace(/-/g, ' '));
-    return Number.isNaN(t) ? 0 : t;
-  };
+  // Filter & sort stocks by GRN number (Admin & Client, Hera & Kern)
   const visibleStocks = stocks
     .filter(item => {
       // If logged in as client, only show items belonging to their company
@@ -1580,11 +1575,7 @@ function App() {
         (item.lotNo || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCat && matchesSearch;
     })
-    .sort((a, b) => {
-      const diff = parseStockDateMs(a.inDate) - parseStockDateMs(b.inDate);
-      if (diff !== 0) return diff;
-      return (a.grnNo || '').localeCompare(b.grnNo || '');
-    });
+    .sort((a, b) => (a.grnNo || '').localeCompare(b.grnNo || ''));
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.selectedQty, 0);
   const totalWarehouseBags = stocks.reduce((sum, item) => sum + Math.round((item.weightKg || item.qty || 0) / 50), 0);
