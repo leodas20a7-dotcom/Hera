@@ -2191,7 +2191,7 @@ function App() {
                   <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800' }}>All Dispatched Delivery Notes & History</h3>
-                      <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
+                      <p className="mobile-hide-subtext" style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
                         Master outbound delivery notes & warehouse gate pass history
                       </p>
                     </div>
@@ -2879,7 +2879,7 @@ function App() {
                 <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800' }}>My Delivery Notes & Challans</h3>
-                    <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
+                    <p className="mobile-hide-subtext" style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
                       Issued outbound delivery notes & warehouse gate pass history
                     </p>
                   </div>
@@ -2897,7 +2897,7 @@ function App() {
                   <div className="empty-cart-card" style={{ padding: '36px 20px', textAlign: 'center' }}>
                     <div className="empty-icon">🚚</div>
                     <h3>No Delivery History Yet</h3>
-                    <p>When goods are dispatched, your official delivery notes will appear here.</p>
+                    <p className="mobile-hide-subtext">When goods are dispatched, your official delivery notes will appear here.</p>
                   </div>
                 ) : (
                   <div className="delivery-history-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -4120,7 +4120,7 @@ function App() {
             <div className="empty-cart-card" style={{ padding: '24px' }}>
               <div className="empty-icon">🚚</div>
               <h3>No Delivery Notes Generated Yet</h3>
-              <p>When you dispatch items from your inventory, official delivery notes will appear here.</p>
+              <p className="mobile-hide-subtext">When you dispatch items from your inventory, official delivery notes will appear here.</p>
             </div>
           ) : (
             <div className="stocks-table-wrapper" style={{ maxHeight: '60vh', overflowY: 'auto' }}>

@@ -4793,4 +4793,7 @@ html, body {
   .kern-desktop-only-download {
     display: none !important;
   }
+  .mobile-hide-subtext {
+    display: none !important;
+  }
 }
