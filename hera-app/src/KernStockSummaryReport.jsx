@@ -58,6 +58,18 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
     group.subtotal += Number(item.qty) || 0;
   });
 
+  const parseDateMs = (d) => {
+    if (!d) return 0;
+    const t = Date.parse(String(d).replace(/-/g, ' '));
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  grnGroups.sort((a, b) => {
+    const diff = parseDateMs(a.inDate) - parseDateMs(b.inDate);
+    if (diff !== 0) return diff;
+    return (a.grnNo || '').localeCompare(b.grnNo || '');
+  });
+
   const grandTotal = grnGroups.reduce((sum, g) => sum + g.subtotal, 0);
 
   const formatQty = (val) => {

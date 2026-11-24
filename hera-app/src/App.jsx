@@ -444,6 +444,18 @@ function App() {
         }));
         if (activeLogisticsId === 'kern' && mapped.length === 0) {
           setStocks(KERN_INITIAL_STOCKS);
+        } else if (activeLogisticsId === 'kern') {
+          const parseDateMs = (d) => {
+            if (!d) return 0;
+            const t = Date.parse(String(d).replace(/-/g, ' '));
+            return Number.isNaN(t) ? 0 : t;
+          };
+          const sortedKern = [...mapped].sort((a, b) => {
+            const diff = parseDateMs(a.inDate) - parseDateMs(b.inDate);
+            if (diff !== 0) return diff;
+            return (a.grnNo || '').localeCompare(b.grnNo || '');
+          });
+          setStocks(sortedKern);
         } else {
           setStocks(mapped);
         }
