@@ -442,22 +442,22 @@ function App() {
           weightKg: Number(s.weight_kg) || 0,
           tagClass: 'tag-blue'
         }));
-        if (activeLogisticsId === 'kern' && mapped.length === 0) {
-          setStocks(KERN_INITIAL_STOCKS);
-        } else if (activeLogisticsId === 'kern') {
-          const parseDateMs = (d) => {
-            if (!d) return 0;
-            const t = Date.parse(String(d).replace(/-/g, ' '));
-            return Number.isNaN(t) ? 0 : t;
-          };
-          const sortedKern = [...mapped].sort((a, b) => {
+        const parseDateMs = (d) => {
+          if (!d) return 0;
+          const t = Date.parse(String(d).replace(/-/g, ' '));
+          return Number.isNaN(t) ? 0 : t;
+        };
+        const sortDatewise = (list) =>
+          [...list].sort((a, b) => {
             const diff = parseDateMs(a.inDate) - parseDateMs(b.inDate);
             if (diff !== 0) return diff;
             return (a.grnNo || '').localeCompare(b.grnNo || '');
           });
-          setStocks(sortedKern);
+
+        if (activeLogisticsId === 'kern' && mapped.length === 0) {
+          setStocks(sortDatewise(KERN_INITIAL_STOCKS));
         } else {
-          setStocks(mapped);
+          setStocks(sortDatewise(mapped));
         }
       }
 
@@ -1557,23 +1557,34 @@ function App() {
     }
   };
 
-  // Filter stocks based on role & search
-  const visibleStocks = stocks.filter(item => {
-    // If logged in as client, only show items belonging to their company
-    if (currentUser && currentUser.role === 'client') {
-      if (item.clientName && !item.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))) {
-        return false;
+  // Filter & sort stocks datewise (Admin & Client, Hera & Kern)
+  const parseStockDateMs = (d) => {
+    if (!d) return 0;
+    const t = Date.parse(String(d).replace(/-/g, ' '));
+    return Number.isNaN(t) ? 0 : t;
+  };
+  const visibleStocks = stocks
+    .filter(item => {
+      // If logged in as client, only show items belonging to their company
+      if (currentUser && currentUser.role === 'client') {
+        if (item.clientName && !item.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))) {
+          return false;
+        }
       }
-    }
-    const matchesCat = categoryFilter === 'ALL' || item.category === categoryFilter;
-    const matchesSearch = searchQuery === '' ||
-      item.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.grnNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.whLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.lotNo.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
+      const matchesCat = categoryFilter === 'ALL' || item.category === categoryFilter;
+      const matchesSearch = searchQuery === '' ||
+        (item.product || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.brand || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.grnNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.whLocation || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.lotNo || '').toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesSearch;
+    })
+    .sort((a, b) => {
+      const diff = parseStockDateMs(a.inDate) - parseStockDateMs(b.inDate);
+      if (diff !== 0) return diff;
+      return (a.grnNo || '').localeCompare(b.grnNo || '');
+    });
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.selectedQty, 0);
   const totalWarehouseBags = stocks.reduce((sum, item) => sum + Math.round((item.weightKg || item.qty || 0) / 50), 0);
