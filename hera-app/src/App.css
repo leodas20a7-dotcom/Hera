@@ -4787,3 +4787,10 @@ html, body {
 
 
 
+
+/* Hide duplicate top-toolbar Download PDF on mobile for Kern (shown side-by-side with Summary View / PDF Preview toggle) */
+@media (max-width: 767px) {
+  .kern-desktop-only-download {
+    display: none !important;
+  }
+}

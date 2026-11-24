@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const ROWS_PER_PAGE = 25; // Matches SSK.pdf: 25 rows on Page 1 (ending at LONGAN DOUBLE GOLD), rest on Page 2
 const A4_PREVIEW_WIDTH = 794; // Standard A4 width at 96 DPI
 
-export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate }) {
+export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate, onDownloadPdf }) {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
@@ -102,66 +102,43 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate 
 
   return (
     <div style={{ paddingBottom: isMobile ? '88px' : '0' }}>
-      {/* Mobile / Quick View Mode Switcher */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '12px',
-          flexWrap: 'wrap'
-        }}
-      >
+      {/* Mobile Only: 2 Side-by-Side Buttons (Summary View / PDF Preview toggle + Download PDF) */}
+      {isMobile && (
         <div
           style={{
-            display: 'inline-flex',
-            background: '#E2E8F0',
-            padding: '3px',
-            borderRadius: '10px',
-            gap: '4px'
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '10px',
+            marginBottom: '12px'
           }}
         >
           <button
             type="button"
-            onClick={() => setViewMode('summary')}
+            onClick={() => setViewMode(viewMode === 'summary' ? 'pdf' : 'summary')}
             style={{
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
+              border: '1.5px solid #CBD5E1',
+              padding: '10px 12px',
+              borderRadius: '10px',
+              fontSize: '0.82rem',
               fontWeight: '700',
               cursor: 'pointer',
-              background: viewMode === 'summary' ? '#FFFFFF' : 'transparent',
-              color: viewMode === 'summary' ? '#0F172A' : '#475569',
-              boxShadow: viewMode === 'summary' ? '0 1px 3px rgba(15,23,42,0.1)' : 'none'
+              background: '#FFFFFF',
+              color: '#0F172A',
+              boxShadow: '0 1px 3px rgba(15,23,42,0.06)'
             }}
           >
-            📱 Summary View
+            {viewMode === 'summary' ? '📄 PDF Preview' : '📱 Summary View'}
           </button>
           <button
             type="button"
-            onClick={() => setViewMode('pdf')}
-            style={{
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              background: viewMode === 'pdf' ? '#FFFFFF' : 'transparent',
-              color: viewMode === 'pdf' ? '#0F172A' : '#475569',
-              boxShadow: viewMode === 'pdf' ? '0 1px 3px rgba(15,23,42,0.1)' : 'none'
-            }}
+            className="doc-download-btn"
+            onClick={onDownloadPdf}
+            style={{ width: '100%', justifyContent: 'center', margin: 0 }}
           >
-            📄 PDF Preview
+            Download PDF
           </button>
         </div>
-
-        <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#475569' }}>
-          Total Qty: <strong style={{ color: '#0F172A' }}>{grandTotal.toLocaleString('en-IN')}</strong>
-        </div>
-      </div>
+      )}
 
       {/* OPTION 2A: CLEAN MOBILE CARD SUMMARY VIEW */}
       {viewMode === 'summary' && (

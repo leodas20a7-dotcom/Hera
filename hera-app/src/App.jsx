@@ -2082,7 +2082,10 @@ function App() {
                 </div>
 
                 {reportSubTab === 'stockReport' ? (
-                  <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                  <button
+                    className={`doc-download-btn ${activeLogistics.id === 'kern' ? 'kern-desktop-only-download' : ''}`}
+                    onClick={() => setShowReportDownloadConfirm(true)}
+                  >
                     Download PDF
                   </button>
                 ) : (
@@ -2099,6 +2102,7 @@ function App() {
                     logistics={activeLogistics}
                     partyName={stocks[0]?.clientName || 'LORDS AND KINGS ENTERPRISES'}
                     asOnDate={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}
+                    onDownloadPdf={() => setShowReportDownloadConfirm(true)}
                   />
                 ) : (
                 <div className="official-report-sheet" id="monthly-stock-report-sheet">
@@ -2766,7 +2770,10 @@ function App() {
               </div>
 
               {reportSubTab === 'stockReport' ? (
-                <button className="doc-download-btn" onClick={() => setShowReportDownloadConfirm(true)}>
+                <button
+                  className={`doc-download-btn ${activeLogistics.id === 'kern' ? 'kern-desktop-only-download' : ''}`}
+                  onClick={() => setShowReportDownloadConfirm(true)}
+                >
                   Download PDF
                 </button>
               ) : (
@@ -2783,6 +2790,7 @@ function App() {
                   logistics={activeLogistics}
                   partyName={currentUser?.company || 'LORDS AND KINGS ENTERPRISES'}
                   asOnDate={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}
+                  onDownloadPdf={() => setShowReportDownloadConfirm(true)}
                 />
               ) : (
               <div className="official-report-sheet" id="monthly-stock-report-sheet">
