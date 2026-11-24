@@ -38,8 +38,9 @@ const DEMO_CLIENT = {
 // Initial empty Inward Consignment Requests (Driven 100% by live Supabase realtime data)
 const INITIAL_INWARD_REQUESTS = [];
 
-// Prime Dry Storage Hero Banner Component matching reference design
-function WarehouseHeroBanner({ onManageInventory, onLearnMore }) {
+// Prime Dry / Cold Storage Hero Banner Component
+function WarehouseHeroBanner({ onManageInventory, onLearnMore, logistics }) {
+  const isKern = logistics?.id === 'kern';
   return (
     <div className="prime-hero-banner">
       {/* Background Warehouse Overlay with soft depth */}
@@ -101,10 +102,10 @@ function WarehouseHeroBanner({ onManageInventory, onLearnMore }) {
                   <div className="wood-plank"></div>
                 </div>
 
-                {/* Clean Direct Hera Branding on Crate */}
+                {/* Clean Direct Branding on Crate */}
                 <div className="crate-clean-brand">
-                  <span className="crate-brand-title">HERA</span>
-                  <span className="crate-brand-subtitle">Dry Storage Solutions</span>
+                  <span className="crate-brand-title">{isKern ? 'KERN' : 'HERA'}</span>
+                  <span className="crate-brand-subtitle">{isKern ? 'Cold & Agro Storage' : 'Dry Storage Solutions'}</span>
                 </div>
               </div>
 
@@ -126,8 +127,11 @@ function WarehouseHeroBanner({ onManageInventory, onLearnMore }) {
         {/* Right Side: Headline, Subtitle, Highlights & Action Buttons */}
         <div className="prime-hero-content">
           <h1 className="prime-hero-heading">
-            Prime Dry Storage <br />
-            & Space Rental
+            {isKern ? (
+              <>Cold &amp; Agro Storage <br /> &amp; Space Rental</>
+            ) : (
+              <>Prime Dry Storage <br /> &amp; Space Rental</>
+            )}
           </h1>
           <p className="prime-hero-subheading">
             Optimal Conditions for Your Inventory
@@ -1268,7 +1272,8 @@ function App() {
   // Admin Inward Acceptance
   const handleOpenAcceptModal = (req) => {
     setAcceptingRequest(req);
-    setAcceptBay('SIP-B' + Math.floor(1 + Math.random() * 9));
+    const prefix = activeLogistics.id === 'kern' ? 'COLD-A' : 'SIP-B';
+    setAcceptBay(prefix + Math.floor(1 + Math.random() * 9));
     setAcceptQty(String(req.qty));
     setAcceptWeight(String(req.weightKg));
   };
@@ -1284,9 +1289,10 @@ function App() {
     // 1. Add to active warehouse stocks
     const newStockItem = {
       id: Date.now(),
+      logisticsId: activeLogistics.id,
       docNo: acceptingRequest.docNo,
       grnNo: grnNumber,
-      inDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      inDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
       clientName: acceptingRequest.clientName,
       product: acceptingRequest.product,
       category: acceptingRequest.category,
@@ -1295,9 +1301,10 @@ function App() {
       whLocation: acceptBay,
       lotNo: 'LOT-' + Math.floor(10000 + Math.random() * 90000),
       count: acceptingRequest.unit === 'BAGS' ? '50KG BAGS' : 'STANDARD',
-      rateType: 'Daily',
+      rateType: activeLogistics.id === 'kern' ? 'Weekly' : 'Daily',
       qty: acceptedQty,
       unit: acceptingRequest.unit,
+      subUom: '',
       weightKg: acceptedWeight,
       tagClass: 'tag-blue'
     };
@@ -1800,6 +1807,7 @@ function App() {
             <div className="home-content-container">
               {/* Full-width clean hero matching reference image */}
               <WarehouseHeroBanner
+                logistics={activeLogistics}
                 onManageInventory={() => navigateToTab('adminInventory')}
                 onLearnMore={() => setShowLearnMoreModal(true)}
               />
