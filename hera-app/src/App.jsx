@@ -383,11 +383,12 @@ function App() {
     localStorage.setItem('hera_install_dismissed', 'true');
   };
 
-  // Reusable Live Supabase Sync function (scoped by active logistics: 'hera' | 'kern')
-  const loadSupabaseData = async () => {
+  // Reusable Live Supabase Sync function (scoped strictly by active logistics: 'hera' | 'kern')
+  const loadSupabaseData = async (explicitLogisticsId) => {
     try {
       const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
-      const activeLogisticsId = savedUser?.logisticsId || 'hera';
+      const activeLogisticsId = explicitLogisticsId || savedUser?.logisticsId;
+      if (!activeLogisticsId) return;
       const byLogistics = (query) =>
         activeLogisticsId === 'kern'
           ? query.eq('logistics_id', 'kern')
@@ -517,20 +518,22 @@ function App() {
 
   // Live Supabase Sync & Realtime Subscription
   useEffect(() => {
-    loadSupabaseData();
+    const initialUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+    if (initialUser?.logisticsId) {
+      loadSupabaseData(initialUser.logisticsId);
+    }
+
+    const reloadForActiveUser = () => {
+      const u = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+      if (u?.logisticsId) loadSupabaseData(u.logisticsId);
+    };
 
     // Supabase Realtime Subscription Channel
     const channel = supabase
       .channel('hera-realtime-db-feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_stocks' }, () => {
-        loadSupabaseData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inward_requests' }, () => {
-        loadSupabaseData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, () => {
-        loadSupabaseData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'warehouse_stocks' }, reloadForActiveUser)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inward_requests' }, reloadForActiveUser)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_notes' }, reloadForActiveUser)
       .subscribe();
 
     return () => {
@@ -540,21 +543,22 @@ function App() {
 
   // Fetch when delivery note modal opens or report tab opens
   useEffect(() => {
-    if (showCustomerChallanModal || activeTab === 'clientInwardReport' || activeTab === 'adminInwardReport') {
-      loadSupabaseData();
+    if (currentUser?.logisticsId && (showCustomerChallanModal || activeTab === 'clientInwardReport' || activeTab === 'adminInwardReport')) {
+      loadSupabaseData(currentUser.logisticsId);
     }
   }, [showCustomerChallanModal, activeTab, reportSubTab]);
 
   // Reload live Supabase data whenever active logistics switches ('hera' <-> 'kern')
   useEffect(() => {
     if (currentUser?.logisticsId) {
-      loadSupabaseData();
+      loadSupabaseData(currentUser.logisticsId);
     }
   }, [currentUser?.logisticsId]);
 
-  // Synchronize localStorage
+  // Synchronize localStorage (only when logged in)
   useEffect(() => {
-    const key = currentUser?.logisticsId === 'kern' ? 'kern_stocks' : 'hera_stocks';
+    if (!currentUser?.logisticsId) return;
+    const key = currentUser.logisticsId === 'kern' ? 'kern_stocks' : 'hera_stocks';
     localStorage.setItem(key, JSON.stringify(stocks));
   }, [stocks, currentUser?.logisticsId]);
 
@@ -681,6 +685,10 @@ function App() {
             company: 'LORDS AND KINGS ENTERPRISES',
             address: 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92'
           };
+          localStorage.setItem('hera_current_user', JSON.stringify(kernSession));
+          setStocks([]);
+          setChallanHistory([]);
+          setInwardRequests([]);
           showToast('Welcome to Kern Logistics!', 'success');
           setCurrentUser(kernSession);
           setActiveTab('clientInventory');
@@ -710,6 +718,10 @@ function App() {
             address: foundUser.address || (foundUser.role === 'admin' ? logisticsCfg.hubLabel : 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92')
           };
 
+          localStorage.setItem('hera_current_user', JSON.stringify(userSession));
+          setStocks([]);
+          setChallanHistory([]);
+          setInwardRequests([]);
           showToast('Login successful', 'success');
           setCurrentUser(userSession);
           setActiveTab(userSession.role === 'admin' ? 'adminOverview' : 'clientInventory');
@@ -849,6 +861,9 @@ function App() {
     setActiveTab('portalLogin');
     localStorage.removeItem('hera_active_tab');
     localStorage.removeItem('hera_current_user');
+    setStocks([]);
+    setChallanHistory([]);
+    setInwardRequests([]);
     setCart([]);
     setCartStep('review');
   };
