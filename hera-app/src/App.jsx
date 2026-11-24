@@ -180,21 +180,30 @@ function App() {
 
   const [showLearnMoreModal, setShowLearnMoreModal] = useState(false);
 
-  // Live stocks (starts empty, loads from Supabase)
+  // Live stocks (scoped strictly by logged-in logistics: 'hera' | 'kern')
   const [stocks, setStocks] = useState(() => {
-    const saved = localStorage.getItem('hera_stocks');
+    const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+    if (!savedUser?.logisticsId) return [];
+    const key = savedUser.logisticsId === 'kern' ? 'kern_stocks' : 'hera_stocks';
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Live challan history
+  // Live challan history (scoped strictly by logged-in logistics)
   const [challanHistory, setChallanHistory] = useState(() => {
-    const saved = localStorage.getItem('hera_challans');
+    const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+    if (!savedUser?.logisticsId) return [];
+    const key = savedUser.logisticsId === 'kern' ? 'kern_challans' : 'hera_challans';
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Live Incoming / Inward Requests from Clients
+  // Live Incoming / Inward Requests from Clients (scoped strictly by logged-in logistics)
   const [inwardRequests, setInwardRequests] = useState(() => {
-    const saved = localStorage.getItem('hera_inward_requests');
+    const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+    if (!savedUser?.logisticsId) return [];
+    const key = savedUser.logisticsId === 'kern' ? 'kern_inward_requests' : 'hera_inward_requests';
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -546,7 +555,7 @@ function App() {
     if (currentUser?.logisticsId && (showCustomerChallanModal || activeTab === 'clientInwardReport' || activeTab === 'adminInwardReport')) {
       loadSupabaseData(currentUser.logisticsId);
     }
-  }, [showCustomerChallanModal, activeTab, reportSubTab]);
+  }, [showCustomerChallanModal, activeTab, reportSubTab, currentUser?.logisticsId]);
 
   // Reload live Supabase data whenever active logistics switches ('hera' <-> 'kern')
   useEffect(() => {
@@ -555,7 +564,7 @@ function App() {
     }
   }, [currentUser?.logisticsId]);
 
-  // Synchronize localStorage (only when logged in)
+  // Synchronize localStorage (scoped per logistics, only when logged in)
   useEffect(() => {
     if (!currentUser?.logisticsId) return;
     const key = currentUser.logisticsId === 'kern' ? 'kern_stocks' : 'hera_stocks';
@@ -563,12 +572,16 @@ function App() {
   }, [stocks, currentUser?.logisticsId]);
 
   useEffect(() => {
-    localStorage.setItem('hera_challans', JSON.stringify(challanHistory));
-  }, [challanHistory]);
+    if (!currentUser?.logisticsId) return;
+    const key = currentUser.logisticsId === 'kern' ? 'kern_challans' : 'hera_challans';
+    localStorage.setItem(key, JSON.stringify(challanHistory));
+  }, [challanHistory, currentUser?.logisticsId]);
 
   useEffect(() => {
-    localStorage.setItem('hera_inward_requests', JSON.stringify(inwardRequests));
-  }, [inwardRequests]);
+    if (!currentUser?.logisticsId) return;
+    const key = currentUser.logisticsId === 'kern' ? 'kern_inward_requests' : 'hera_inward_requests';
+    localStorage.setItem(key, JSON.stringify(inwardRequests));
+  }, [inwardRequests, currentUser?.logisticsId]);
 
   useEffect(() => {
     if (currentUser) {
@@ -765,7 +778,8 @@ function App() {
       }
 
       try {
-        const clientEmail = regEmail.trim() || `${regDigits}@heralogistics.com`;
+        const regLogistics = getLogisticsConfig(selectedLogistics);
+        const clientEmail = regEmail.trim() || `${regDigits}@${selectedLogistics === 'kern' ? 'kernlogistics' : 'heralogistics'}.com`;
         const { data, error } = await supabase.from('profiles').insert([{
           phone: regPhone.trim(),
           email: clientEmail,
@@ -783,9 +797,13 @@ function App() {
           email: clientEmail,
           phone: regPhone.trim(),
           company: regCompany.trim(),
-          address: 'Thoothukudi / Chennai Hub'
+          address: regLogistics.hubLabel
         };
 
+        localStorage.setItem('hera_current_user', JSON.stringify(newSession));
+        setStocks([]);
+        setChallanHistory([]);
+        setInwardRequests([]);
         showToast('Account registered successfully!', 'success');
         setCurrentUser(newSession);
         setActiveTab('clientInventory');
@@ -2801,7 +2819,7 @@ function App() {
             {reportSubTab === 'stockReport' ? (
               activeLogistics.id === 'kern' ? (
                 <KernStockSummaryReport
-                  stocks={stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))}
+                  stocks={stocks.filter(s => !currentUser.company || (s.clientName || '').toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))}
                   logistics={activeLogistics}
                   partyName={currentUser?.company || 'LORDS AND KINGS ENTERPRISES'}
                   asOnDate={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}
