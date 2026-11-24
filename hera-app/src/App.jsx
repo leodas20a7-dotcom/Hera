@@ -223,7 +223,7 @@ function App() {
   const [acceptWeight, setAcceptWeight] = useState('');
 
   // Gateway Auth Form state (Logistics Selector, Mobile & 6-Digit PIN)
-  const [selectedLogistics, setSelectedLogistics] = useState('hera'); // 'hera' | 'kern'
+  const [selectedLogistics, setSelectedLogistics] = useState('kern'); // 'hera' | 'kern'
   const [gatewayTab, setGatewayTab] = useState('login'); // 'login' | 'register'
   const [phoneInput, setPhoneInput] = useState('');
   const [pinInput, setPinInput] = useState('');
