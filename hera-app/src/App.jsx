@@ -4,6 +4,9 @@ import './App.css';
 import heraLogo from './assets/HERA LOGO.jpeg';
 import heraWarehouseImg from './assets/hera_warehouse_hero.jpg';
 import { supabase } from './supabaseClient';
+import { getLogisticsConfig } from './logisticsConfig';
+import { KERN_INITIAL_STOCKS } from './kernData';
+import { KernStockSummaryReport } from './KernStockSummaryReport';
 
 // Initial empty stocks (Driven 100% by live Supabase realtime data)
 const INITIAL_STOCKS = [];
@@ -154,6 +157,8 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const activeLogistics = getLogisticsConfig(currentUser?.logisticsId || 'hera');
+
   // Active page tab inside portal with memory persistence:
   // For Admin: 'adminOverview' (Home) | 'adminInventory' | 'adminIncoming' | 'adminInwardReport' | 'adminChallans'
   // For Client: 'clientHome' (Home) | 'clientInventory' | 'clientSendGoods' | 'clientInwardReport' | 'cart'
@@ -217,7 +222,8 @@ function App() {
   const [acceptQty, setAcceptQty] = useState('');
   const [acceptWeight, setAcceptWeight] = useState('');
 
-  // Gateway Auth Form state (Mobile & 6-Digit PIN)
+  // Gateway Auth Form state (Logistics Selector, Mobile & 6-Digit PIN)
+  const [selectedLogistics, setSelectedLogistics] = useState('hera'); // 'hera' | 'kern'
   const [gatewayTab, setGatewayTab] = useState('login'); // 'login' | 'register'
   const [phoneInput, setPhoneInput] = useState('');
   const [pinInput, setPinInput] = useState('');
@@ -377,17 +383,27 @@ function App() {
     localStorage.setItem('hera_install_dismissed', 'true');
   };
 
-  // Reusable Live Supabase Sync function
+  // Reusable Live Supabase Sync function (scoped by active logistics: 'hera' | 'kern')
   const loadSupabaseData = async () => {
     try {
-      const { data: stockData } = await supabase
-        .from('warehouse_stocks')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+      const activeLogisticsId = savedUser?.logisticsId || 'hera';
+      const byLogistics = (query) =>
+        activeLogisticsId === 'kern'
+          ? query.eq('logistics_id', 'kern')
+          : query.or('logistics_id.eq.hera,logistics_id.is.null');
+
+      const { data: stockData } = await byLogistics(
+        supabase
+          .from('warehouse_stocks')
+          .select('*')
+          .order('created_at', { ascending: activeLogisticsId === 'kern' })
+      );
 
       if (stockData) {
         const mapped = stockData.map(s => ({
           id: s.id,
+          logisticsId: s.logistics_id || activeLogisticsId,
           docNo: s.doc_no,
           grnNo: s.grn_no,
           inDate: s.in_date,
@@ -402,16 +418,23 @@ function App() {
           rateType: s.rate_type || 'Daily',
           qty: Number(s.qty),
           unit: s.unit || 'BAGS',
+          subUom: s.sub_uom || '',
           weightKg: Number(s.weight_kg) || 0,
           tagClass: 'tag-blue'
         }));
-        setStocks(mapped);
+        if (activeLogisticsId === 'kern' && mapped.length === 0) {
+          setStocks(KERN_INITIAL_STOCKS);
+        } else {
+          setStocks(mapped);
+        }
       }
 
-      const { data: challanData } = await supabase
-        .from('delivery_notes')
-        .select('*, delivery_note_items(*)')
-        .order('created_at', { ascending: false });
+      const { data: challanData } = await byLogistics(
+        supabase
+          .from('delivery_notes')
+          .select('*, delivery_note_items(*)')
+          .order('created_at', { ascending: false })
+      );
 
       if (challanData) {
         const mappedChallans = challanData.map(c => ({
@@ -456,10 +479,12 @@ function App() {
         setChallanHistory(mappedChallans);
       }
 
-      const { data: inwardData } = await supabase
-        .from('inward_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data: inwardData } = await byLogistics(
+        supabase
+          .from('inward_requests')
+          .select('*')
+          .order('created_at', { ascending: false })
+      );
 
       if (inwardData) {
         const mappedInwards = inwardData.map(r => ({
@@ -520,10 +545,18 @@ function App() {
     }
   }, [showCustomerChallanModal, activeTab, reportSubTab]);
 
+  // Reload live Supabase data whenever active logistics switches ('hera' <-> 'kern')
+  useEffect(() => {
+    if (currentUser?.logisticsId) {
+      loadSupabaseData();
+    }
+  }, [currentUser?.logisticsId]);
+
   // Synchronize localStorage
   useEffect(() => {
-    localStorage.setItem('hera_stocks', JSON.stringify(stocks));
-  }, [stocks]);
+    const key = currentUser?.logisticsId === 'kern' ? 'kern_stocks' : 'hera_stocks';
+    localStorage.setItem(key, JSON.stringify(stocks));
+  }, [stocks, currentUser?.logisticsId]);
 
   useEffect(() => {
     localStorage.setItem('hera_challans', JSON.stringify(challanHistory));
@@ -541,10 +574,15 @@ function App() {
     }
   }, [currentUser]);
 
-  // Fetch profiles for Admin PIN management
+  // Fetch profiles for Admin PIN management (scoped to active logistics)
   const loadSupabaseProfiles = async () => {
     try {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
+      const activeId = savedUser?.logisticsId || 'hera';
+      const query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const { data } = activeId === 'kern'
+        ? await query.eq('logistics_id', 'kern')
+        : await query.or('logistics_id.eq.hera,logistics_id.is.null');
       if (data) setDbProfiles(data);
     } catch (err) {
       console.warn('Profiles load error:', err);
@@ -609,7 +647,7 @@ function App() {
       }
 
       try {
-        // Query Supabase profiles table
+        // Query Supabase profiles table filtered by selected logistics ('hera' | 'kern')
         const { data: matchedProfiles, error: fetchErr } = await supabase
           .from('profiles')
           .select('*');
@@ -617,11 +655,39 @@ function App() {
         let foundUser = null;
         if (matchedProfiles && matchedProfiles.length > 0) {
           foundUser = matchedProfiles.find(p => {
+            const profileLogistics = (p.logistics_id || 'hera').toLowerCase();
+            if (profileLogistics !== selectedLogistics) return false;
             const pPhone = (p.phone || '').replace(/\D/g, '');
             const phoneMatch = digits.length >= 6 && pPhone && (pPhone === digits || pPhone.endsWith(digits) || digits.endsWith(pPhone));
             const emailMatch = p.email && p.email.toLowerCase() === cleanInput.toLowerCase();
             return phoneMatch || emailMatch;
           });
+        }
+
+        // Offline/fallback for Kern client if not yet fetched
+        if (!foundUser && selectedLogistics === 'kern' && digits === '9585543555') {
+          if (cleanPin !== '121312') {
+            showToast('Incorrect 6-digit PIN for Kern Logistics. Please verify and try again.', 'error');
+            setIsLoggingIn(false);
+            return;
+          }
+          const kernSession = {
+            id: 'kern-client-lords',
+            logisticsId: 'kern',
+            name: 'Mr. Chidambaram',
+            role: 'client',
+            email: 'kern.client@lordskings.com',
+            phone: '9585543555',
+            company: 'LORDS AND KINGS ENTERPRISES',
+            address: 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92'
+          };
+          showToast('Welcome to Kern Logistics!', 'success');
+          setCurrentUser(kernSession);
+          setActiveTab('clientInventory');
+          setPhoneInput('');
+          setPinInput('');
+          setIsLoggingIn(false);
+          return;
         }
 
         if (foundUser) {
@@ -632,14 +698,16 @@ function App() {
             return;
           }
 
+          const logisticsCfg = getLogisticsConfig(selectedLogistics);
           const userSession = {
             id: foundUser.id,
-            name: foundUser.contact_person || (foundUser.role === 'admin' ? 'Hera Admin (Operations Desk)' : 'Mr. Chidambaram'),
+            logisticsId: selectedLogistics,
+            name: foundUser.contact_person || (foundUser.role === 'admin' ? `${logisticsCfg.label} Admin` : 'Mr. Chidambaram'),
             role: foundUser.role || 'client',
             email: foundUser.email || '',
             phone: foundUser.phone || cleanInput,
-            company: foundUser.company_name || foundUser.company || (foundUser.role === 'admin' ? 'Hera Logistics Pvt. Ltd. Thoothukudi' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'),
-            address: foundUser.address || (foundUser.role === 'admin' ? 'Thoothukudi Central Hub' : 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92')
+            company: foundUser.company_name || foundUser.company || (foundUser.role === 'admin' ? logisticsCfg.legalName : 'LORDS AND KINGS ENTERPRISES'),
+            address: foundUser.address || (foundUser.role === 'admin' ? logisticsCfg.hubLabel : 'T/F82, ANNA FRUIT MARKET, KOYAMBEDU, CHENNAI - 92')
           };
 
           showToast('Login successful', 'success');
@@ -691,11 +759,13 @@ function App() {
           email: clientEmail,
           pin: pinInput.trim(),
           role: 'client',
-          company_name: regCompany.trim()
+          company_name: regCompany.trim(),
+          logistics_id: selectedLogistics
         }]).select();
 
         const newSession = {
           id: (data && data[0]?.id) || 'client-' + Date.now(),
+          logisticsId: selectedLogistics,
           name: regName.trim(),
           role: 'client',
           email: clientEmail,
@@ -786,20 +856,23 @@ function App() {
   // Inward Cargo Management (Add/Edit/Delete)
   const handleOpenAddInward = () => {
     setEditingStockId(null);
+    const isKern = activeLogistics.id === 'kern';
     setInwardForm({
       product: '',
-      clientName: 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
-      category: 'Dry Goods',
+      clientName: isKern ? 'LORDS AND KINGS ENTERPRISES' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.',
+      category: isKern ? 'Cold Storage' : 'Dry Goods',
       docNo: 'DOC-' + Math.floor(100000 + Math.random() * 900000),
       grnNo: 'GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27',
-      whLocation: 'SIP-A1',
-      brand: 'HERA-STORED',
+      inDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+      whLocation: isKern ? 'COLD-A1' : 'SIP-A1',
+      brand: isKern ? 'PREMIUM APPLE' : 'HERA-STORED',
       variety: 'STANDARD',
       lotNo: 'LOT-' + Math.floor(1000 + Math.random() * 9000),
-      count: '50KG BAGS',
-      rateType: 'Daily',
+      count: isKern ? '' : '50KG BAGS',
+      subUom: '',
+      rateType: isKern ? 'Weekly' : 'Daily',
       qty: '',
-      unit: 'BAGS',
+      unit: isKern ? 'BOX' : 'BAGS',
       weightKg: ''
     });
     setShowInwardModal(true);
@@ -807,7 +880,14 @@ function App() {
 
   const handleOpenEditInward = (item) => {
     setEditingStockId(item.id);
-    setInwardForm({ ...item, qty: String(item.qty), weightKg: String(item.weightKg || '') });
+    setInwardForm({
+      ...item,
+      inDate: item.inDate || '',
+      subUom: item.subUom || '',
+      rateType: item.rateType || 'Daily',
+      qty: String(item.qty),
+      weightKg: String(item.weightKg || '')
+    });
     setShowInwardModal(true);
   };
 
@@ -816,6 +896,7 @@ function App() {
       setStocks(stocks.filter(s => s.id !== id));
       try {
         await supabase.from('warehouse_stocks').delete().eq('id', id);
+        showToast('Stock record deleted.', 'success');
       } catch (err) {
         console.warn('Supabase delete notice:', err);
       }
@@ -839,6 +920,10 @@ function App() {
 
       try {
         await supabase.from('warehouse_stocks').update({
+          client_name: inwardForm.clientName,
+          doc_no: inwardForm.docNo,
+          grn_no: inwardForm.grnNo,
+          in_date: inwardForm.inDate,
           product: inwardForm.product,
           category: inwardForm.category,
           brand: inwardForm.brand,
@@ -846,21 +931,24 @@ function App() {
           wh_location: inwardForm.whLocation,
           lot_no: inwardForm.lotNo,
           count: inwardForm.count,
+          sub_uom: inwardForm.subUom || '',
           rate_type: inwardForm.rateType,
           qty: qtyNum,
           unit: inwardForm.unit,
           weight_kg: weightNum,
           updated_at: new Date().toISOString()
         }).eq('id', editingStockId);
+        showToast('Stock record updated!', 'success');
       } catch (err) {
         console.warn('Supabase update notice:', err);
       }
     } else {
       const newItem = {
         id: Date.now(),
+        logisticsId: activeLogistics.id,
         docNo: inwardForm.docNo || 'DOC-' + Math.floor(100000 + Math.random() * 900000),
         grnNo: inwardForm.grnNo || 'GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27',
-        inDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        inDate: inwardForm.inDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
         clientName: inwardForm.clientName || 'REGISTERED MERCHANT',
         product: inwardForm.product,
         category: inwardForm.category,
@@ -869,6 +957,7 @@ function App() {
         whLocation: inwardForm.whLocation || 'SIP-A1',
         lotNo: inwardForm.lotNo || 'LOT-' + Math.floor(1000 + Math.random() * 9000),
         count: inwardForm.count || (inwardForm.unit === 'BAGS' ? '50KG BAGS' : 'STANDARD'),
+        subUom: inwardForm.subUom || '',
         rateType: inwardForm.rateType || 'Daily',
         qty: qtyNum,
         unit: inwardForm.unit,
@@ -879,6 +968,7 @@ function App() {
 
       try {
         await supabase.from('warehouse_stocks').insert([{
+          logistics_id: activeLogistics.id,
           client_name: newItem.clientName,
           doc_no: newItem.docNo,
           grn_no: newItem.grnNo,
@@ -890,11 +980,13 @@ function App() {
           wh_location: newItem.whLocation,
           lot_no: newItem.lotNo,
           count: newItem.count,
+          sub_uom: newItem.subUom || '',
           rate_type: newItem.rateType,
           qty: newItem.qty,
           unit: newItem.unit,
           weight_kg: newItem.weightKg
         }]);
+        showToast('New stock record added!', 'success');
       } catch (err) {
         console.warn('Supabase insert notice:', err);
       }
@@ -1014,6 +1106,7 @@ function App() {
     // Async Supabase Sync for Delivery Notes
     try {
       const { data: noteData } = await supabase.from('delivery_notes').insert([{
+        logistics_id: activeLogistics.id,
         dc_no: challanObj.dcNo,
         dc_date: challanObj.dcDate,
         customer_name: challanObj.customerName,
@@ -1117,6 +1210,7 @@ function App() {
 
     try {
       await supabase.from('inward_requests').insert([{
+        logistics_id: activeLogistics.id,
         inward_no: newReq.inwardNo,
         client_name: newReq.clientName,
         product: newReq.product,
@@ -1192,6 +1286,7 @@ function App() {
     // 3. Supabase insert into warehouse_stocks and update inward_requests
     try {
       await supabase.from('warehouse_stocks').insert([{
+        logistics_id: activeLogistics.id,
         client_name: newStockItem.clientName,
         doc_no: newStockItem.docNo,
         grn_no: newStockItem.grnNo,
@@ -1298,7 +1393,7 @@ function App() {
     if (!element) return;
     setIsDownloading(true);
 
-    const filename = `${activeChallanTab === 'delivery' ? 'Hera_Delivery_Challan' : 'Hera_Inward_GRN'}_${issuedChallan?.dcNo.replace(/[/\\s]/g, '_')}.pdf`;
+    const filename = `${activeLogistics.pdfPrefix}_${activeChallanTab === 'delivery' ? 'Delivery_Challan' : 'Inward_GRN'}_${issuedChallan?.dcNo.replace(/[/\\s]/g, '_')}.pdf`;
 
     const frame = element.querySelector('.challan-template-frame');
     const tableContainer = element.querySelector('.challan-table-container');
@@ -1332,7 +1427,7 @@ function App() {
     if (!element) return;
     setIsDownloading(true);
 
-    const filename = `Hera_Inward_Advice_${issuedInwardReceipt?.inwardNo.replace(/[/\\s]/g, '_')}.pdf`;
+    const filename = `${activeLogistics.pdfPrefix}_Inward_Advice_${issuedInwardReceipt?.inwardNo.replace(/[/\\s]/g, '_')}.pdf`;
 
     const frame = element.querySelector('.challan-template-frame');
     const tableContainer = element.querySelector('.challan-table-container');
@@ -1370,14 +1465,17 @@ function App() {
       ? 'Admin_Ledger'
       : (currentUser?.company?.replace(/[^a-zA-Z0-9]/g, '_') || 'Stock_Report');
     const dateFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
-    const filename = `Hera_Monthly_Stock_Report_${clientSuffix}_${dateFormatted}.pdf`;
+    const filename = activeLogistics.id === 'kern'
+      ? `Kern_Stock_Summary_${clientSuffix}_${dateFormatted}.pdf`
+      : `Hera_Monthly_Stock_Report_${clientSuffix}_${dateFormatted}.pdf`;
 
     const opt = {
-      margin: [6, 6, 6, 6],
+      margin: activeLogistics.id === 'kern' ? [6, 6, 6, 6] : [6, 6, 6, 6],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
@@ -1431,20 +1529,23 @@ function App() {
   // VIEW 1: CLEAN & SMART SPLIT-SCREEN LOGIN (CONTAINED FLOATING MODAL)
   // =========================================================================
   if (!currentUser) {
+    const loginLogistics = getLogisticsConfig(selectedLogistics);
     return (
       <div className="clean-split-login">
         <div className="split-modal-container">
           {/* LEFT SIDE: WAREHOUSE HERO IMAGE */}
           <div className="login-image-side">
-            <img src={heraWarehouseImg} alt="Hera Warehouse" className="login-bg-photo" />
+            <img src={heraWarehouseImg} alt={loginLogistics.label} className="login-bg-photo" />
             <div className="login-image-overlay"></div>
             <div className="login-image-content">
               <div className="login-brand-capsule">
-                <img src={heraLogo} alt="Hera Logo" className="login-brand-logo" />
+                <img src={loginLogistics.logo} alt={`${loginLogistics.label} Logo`} className="login-brand-logo" />
               </div>
-              <h1 className="login-hero-title">Hera Logistics</h1>
-              <p className="login-hero-subtitle">Prime Dry Storage & Space Rental</p>
-              <div className="login-hero-badge">📍 Thoothukudi Central Hub</div>
+              <h1 className="login-hero-title">{loginLogistics.label}</h1>
+              <p className="login-hero-subtitle">
+                {selectedLogistics === 'kern' ? 'Cold & Agro Storage Portal' : 'Prime Dry Storage & Space Rental'}
+              </p>
+              <div className="login-hero-badge">📍 {loginLogistics.hubLabel}</div>
             </div>
           </div>
 
@@ -1456,6 +1557,28 @@ function App() {
               </div>
 
               <form onSubmit={handleGatewayAuthSubmit} className="clean-auth-form">
+                <div className="clean-input-group">
+                  <label>Logistics / Warehouse <span className="req-star">*</span></label>
+                  <select
+                    value={selectedLogistics}
+                    onChange={(e) => setSelectedLogistics(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #E2E8F0',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      color: '#0F172A',
+                      background: '#FFFFFF',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="hera">Hera Logistics Pvt. Ltd. (Thoothukudi)</option>
+                    <option value="kern">Kern Logistics Pvt. Ltd. (Sriperumbudur)</option>
+                  </select>
+                </div>
+
                 {gatewayTab === 'login' ? (
                   <>
                     <div className="clean-input-group">
@@ -1580,10 +1703,10 @@ function App() {
         {/* Admin Header */}
         <header className="app-header admin-exclusive-header">
           <div className="brand-title">
-            <img src={heraLogo} alt="Hera Logistics Logo" className="header-brand-logo" />
+            <img src={activeLogistics.logo} alt={`${activeLogistics.label} Logo`} className="header-brand-logo" />
             <div className="header-brand-divider"></div>
             <div className="header-brand-text">
-              <span className="brand-name">HERA ADMIN</span>
+              <span className="brand-name">{activeLogistics.id === 'kern' ? 'KERN ADMIN' : 'HERA ADMIN'}</span>
               <span className="brand-sub">Warehouse Desk</span>
             </div>
           </div>
@@ -1693,15 +1816,35 @@ function App() {
                           <td><span className="wh-bay-badge">{item.whLocation}</span></td>
                           <td>
                             <div className="lot-txt">{item.lotNo}</div>
-                            <div className="count-txt">{item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
+                            <div className="count-txt">{item.subUom || item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: '800', color: '#0f766e', fontSize: '0.92rem' }}>
-                            {item.qty ? item.qty.toLocaleString() + ' KG' : '0 KG'}
+                            {item.qty ? `${item.qty.toLocaleString()} ${item.unit || 'KG'}` : `0 ${item.unit || 'KG'}`}
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <button className="row-dispatch-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}>
-                              Send Item &rarr;
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
+                              <button
+                                type="button"
+                                className="row-dispatch-btn"
+                                style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '6px 10px' }}
+                                title="Edit Record"
+                                onClick={(e) => { e.stopPropagation(); handleOpenEditInward(item); }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="row-dispatch-btn"
+                                style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA', padding: '6px 10px' }}
+                                title="Delete Record"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteStock(item.id); }}
+                              >
+                                🗑️
+                              </button>
+                              <button className="row-dispatch-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}>
+                                Send &rarr;
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1738,12 +1881,30 @@ function App() {
 
                       <div className="mobile-card-footer">
                         <span className="mobile-more-info">📍 Lot: {item.lotNo} • Inward: {item.inDate}</span>
-                        <button
-                          className="mobile-card-action-btn"
-                          onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
-                        >
-                          Send Item &rarr;
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="mobile-card-action-btn"
+                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
+                            onClick={(e) => { e.stopPropagation(); handleOpenEditInward(item); }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="mobile-card-action-btn"
+                            style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteStock(item.id); }}
+                          >
+                            🗑️
+                          </button>
+                          <button
+                            className="mobile-card-action-btn"
+                            onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                          >
+                            Send &rarr;
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1932,6 +2093,14 @@ function App() {
               </div>
 
               {reportSubTab === 'stockReport' ? (
+                activeLogistics.id === 'kern' ? (
+                  <KernStockSummaryReport
+                    stocks={stocks}
+                    logistics={activeLogistics}
+                    partyName={stocks[0]?.clientName || 'LORDS AND KINGS ENTERPRISES'}
+                    asOnDate={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}
+                  />
+                ) : (
                 <div className="official-report-sheet" id="monthly-stock-report-sheet">
                   <div className="report-header-flex">
                     <div className="rep-top-meta-row">
@@ -2012,6 +2181,7 @@ function App() {
                     </div>
                   </div>
                 </div>
+                )
               ) : (
                 <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
                   <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2216,6 +2386,7 @@ function App() {
         {showLearnMoreModal && renderLearnMoreModal()}
         {showPinModal && renderPinManagementModal()}
         {editingDeliveryNote && renderEditDeliveryNoteModal()}
+        {showReportDownloadConfirm && renderReportDownloadConfirmModal()}
 
         {/* Global Toast Notification */}
         {renderToast()}
@@ -2234,10 +2405,10 @@ function App() {
       {/* Client Header */}
       <header className="app-header">
         <div className="brand-title">
-          <img src={heraLogo} alt="Hera Logistics Logo" className="header-brand-logo" />
+          <img src={activeLogistics.logo} alt={`${activeLogistics.label} Logo`} className="header-brand-logo" />
           <div className="header-brand-divider"></div>
           <div className="header-brand-text">
-            <span className="brand-name">HERA LOGISTICS</span>
+            <span className="brand-name">{activeLogistics.shortName}</span>
             <span className="brand-sub">Customer Portal</span>
           </div>
         </div>
@@ -2341,10 +2512,10 @@ function App() {
                           </td>
                           <td>
                             <div className="lot-txt">{item.lotNo}</div>
-                            <div className="count-txt">{item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
+                            <div className="count-txt">{item.subUom || item.count || (Math.round(item.qty / 50) + ' Bags')}</div>
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: '800', color: '#0f766e', fontSize: '0.94rem' }}>
-                            {item.qty ? item.qty.toLocaleString() + ' KG' : '0 KG'}
+                            {item.qty ? `${item.qty.toLocaleString()} ${item.unit || 'KG'}` : `0 ${item.unit || 'KG'}`}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <button className="row-dispatch-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}>
@@ -2606,6 +2777,14 @@ function App() {
             </div>
 
             {reportSubTab === 'stockReport' ? (
+              activeLogistics.id === 'kern' ? (
+                <KernStockSummaryReport
+                  stocks={stocks.filter(s => !currentUser.company || s.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8)))}
+                  logistics={activeLogistics}
+                  partyName={currentUser?.company || 'LORDS AND KINGS ENTERPRISES'}
+                  asOnDate={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}
+                />
+              ) : (
               <div className="official-report-sheet" id="monthly-stock-report-sheet">
                 <div className="report-header-flex">
                   <div className="rep-top-meta-row">
@@ -2686,6 +2865,7 @@ function App() {
                   </div>
                 </div>
               </div>
+              )
             ) : (
               <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
                 <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3052,7 +3232,7 @@ function App() {
             {editingStockId ? '✏️ Edit Item / Bay' : '+ Add New Inward Stock'}
           </h2>
           <p className="modal-sub">
-            {editingStockId ? 'Update quantity, bay, or weight' : 'Add incoming items to Hera Warehouse'}
+            {editingStockId ? `Update ${activeLogistics.label} stock record` : `Add incoming items to ${activeLogistics.label}`}
           </p>
 
           <form onSubmit={handleSaveInwardSubmit} className="inward-entry-form">
@@ -3062,7 +3242,7 @@ function App() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rice, Grains, Raw Cashews"
+                  placeholder="e.g. Rice, Grains, Poland Gala"
                   value={inwardForm.product}
                   onChange={(e) => setInwardForm({ ...inwardForm, product: e.target.value })}
                 />
@@ -3073,9 +3253,29 @@ function App() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. M/S. Lords and Kings"
+                  placeholder="e.g. LORDS AND KINGS ENTERPRISES"
                   value={inwardForm.clientName}
                   onChange={(e) => setInwardForm({ ...inwardForm, clientName: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>GRN Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g. GRN/0002179/26-27"
+                  value={inwardForm.grnNo || ''}
+                  onChange={(e) => setInwardForm({ ...inwardForm, grnNo: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Inward Date</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 24-Oct-2026"
+                  value={inwardForm.inDate || ''}
+                  onChange={(e) => setInwardForm({ ...inwardForm, inDate: e.target.value })}
                 />
               </div>
 
@@ -3086,6 +3286,7 @@ function App() {
                   onChange={(e) => setInwardForm({ ...inwardForm, category: e.target.value })}
                 >
                   <option value="Dry Goods">Dry Goods / Commodities</option>
+                  <option value="Cold Storage">Cold Storage / Perishables</option>
                   <option value="Packaged Cargo">Packaged Goods / Boxes</option>
                 </select>
               </div>
@@ -3101,10 +3302,10 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>Warehouse Bay (e.g. SIP-C14)</label>
+                <label>Warehouse Bay (e.g. COLD-A1 / SIP-C14)</label>
                 <input
                   type="text"
-                  placeholder="e.g. SIP-C14, SIP-10"
+                  placeholder="e.g. COLD-A1, SIP-C14"
                   value={inwardForm.whLocation}
                   onChange={(e) => setInwardForm({ ...inwardForm, whLocation: e.target.value })}
                 />
@@ -3114,9 +3315,19 @@ function App() {
                 <label>Brand / Maker</label>
                 <input
                   type="text"
-                  placeholder="e.g. TIGER, GLOBAL HARVEST"
+                  placeholder="e.g. PREMIUM APPLE, TIGER"
                   value={inwardForm.brand}
                   onChange={(e) => setInwardForm({ ...inwardForm, brand: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Variety</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ROYAL GALA, PLUMS"
+                  value={inwardForm.variety || ''}
+                  onChange={(e) => setInwardForm({ ...inwardForm, variety: e.target.value })}
                 />
               </div>
 
@@ -3124,22 +3335,45 @@ function App() {
                 <label>Lot Number</label>
                 <input
                   type="text"
-                  placeholder="e.g. LOT-98210"
+                  placeholder="e.g. 9310871"
                   value={inwardForm.lotNo}
                   onChange={(e) => setInwardForm({ ...inwardForm, lotNo: e.target.value })}
                 />
               </div>
 
               <div className="form-group">
-                <label>Packaging / Unit</label>
+                <label>Packaging / UOM</label>
                 <select
                   value={inwardForm.unit}
                   onChange={(e) => setInwardForm({ ...inwardForm, unit: e.target.value })}
                 >
                   <option value="BAGS">BAGS</option>
-                  <option value="BOX">BOXES / CARTONS</option>
+                  <option value="BOX">BOX</option>
+                  <option value="TRAY">TRAY</option>
                   <option value="KG">KG</option>
-                  <option value="MT">TONS</option>
+                  <option value="MT">MT</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>SubUom (Size / Grade)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. C100, NO:1"
+                  value={inwardForm.subUom || ''}
+                  onChange={(e) => setInwardForm({ ...inwardForm, subUom: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Rate Type</label>
+                <select
+                  value={inwardForm.rateType || 'Daily'}
+                  onChange={(e) => setInwardForm({ ...inwardForm, rateType: e.target.value })}
+                >
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Monthly">Monthly</option>
                 </select>
               </div>
 
@@ -3253,29 +3487,31 @@ function App() {
               {/* Header Grid */}
               <div className="challan-header-grid">
                 <div className="challan-company-left">
-                  <img src={heraLogo} alt="Hera Logo" className="challan-brand-logo-img" />
-                  <div className="challan-reg-meta">
-                    <div className="reg-row">
-                      <span className="reg-lbl">GSTIN</span>
-                      <span className="reg-colon">:</span>
-                      <span className="reg-val">33AAFCH8632K1ZE</span>
+                  <img src={activeLogistics.logo} alt={`${activeLogistics.label} Logo`} className="challan-brand-logo-img" />
+                  {activeLogistics.gstNo && (
+                    <div className="challan-reg-meta">
+                      <div className="reg-row">
+                        <span className="reg-lbl">GSTIN</span>
+                        <span className="reg-colon">:</span>
+                        <span className="reg-val">{activeLogistics.gstNo}</span>
+                      </div>
+                      <div className="reg-row">
+                        <span className="reg-lbl">CIN</span>
+                        <span className="reg-colon">:</span>
+                        <span className="reg-val">U74900TN1993PTC024718</span>
+                      </div>
                     </div>
-                    <div className="reg-row">
-                      <span className="reg-lbl">CIN</span>
-                      <span className="reg-colon">:</span>
-                      <span className="reg-val">U74900TN1993PTC024718</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="challan-company-right">
-                  <h3 className="company-full-name">HERA LOGISTICS PVT. LTD.</h3>
+                  <h3 className="company-full-name">{activeLogistics.challanLegalName}</h3>
                   <p className="company-hub-address">
-                    No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.<br />
+                    {activeLogistics.address}<br />
                     Tamil Nadu, India.<br />
-                    Contact : 96622 96633<br />
-                    E-Mail: contact@heralogistics.com<br />
-                    Website: www.heralogistics.com
+                    Contact : {activeLogistics.phone}<br />
+                    E-Mail: {activeLogistics.email || 'contact@heralogistics.com'}<br />
+                    Website: {activeLogistics.website || 'www.heralogistics.com'}
                   </p>
                 </div>
               </div>
@@ -3457,10 +3693,10 @@ function App() {
                     <span className="remarks-title">REMARKS:</span>
                     <span className="eoe-tag">E. & O.E</span>
                   </div>
-                  <p className="remarks-text">GR: GOODS DISPATCH AUTHORIZED FROM THOOTHUKUDI DRY WAREHOUSE HUB</p>
+                  <p className="remarks-text">GR: GOODS DISPATCH AUTHORIZED FROM {activeLogistics.hubLabel.toUpperCase()}</p>
                 </div>
                 <div className="footer-sign-col">
-                  <div className="sign-company-name">For Hera Logistics Pvt. Ltd.</div>
+                  <div className="sign-company-name">For {activeLogistics.challanLegalName}</div>
                   <div className="authorised-sign-box">
                     <div className="sign-line-rule"></div>
                     <span className="authorised-sign-text">Authorised Signatory</span>
@@ -3679,20 +3915,22 @@ function App() {
             <div className="challan-template-frame">
               <div className="challan-header-grid">
                 <div className="challan-company-left">
-                  <img src={heraLogo} alt="Hera Logo" className="challan-brand-logo-img" />
-                  <div className="challan-reg-meta">
-                    <div className="reg-row"><span className="reg-lbl">GSTIN</span><span className="reg-colon">:</span><span className="reg-val">33AAFCH8632K1ZE</span></div>
-                    <div className="reg-row"><span className="reg-lbl">CIN</span><span className="reg-colon">:</span><span className="reg-val">U74900TN1993PTC024718</span></div>
-                  </div>
+                  <img src={activeLogistics.logo} alt={`${activeLogistics.label} Logo`} className="challan-brand-logo-img" />
+                  {activeLogistics.gstNo && (
+                    <div className="challan-reg-meta">
+                      <div className="reg-row"><span className="reg-lbl">GSTIN</span><span className="reg-colon">:</span><span className="reg-val">{activeLogistics.gstNo}</span></div>
+                      <div className="reg-row"><span className="reg-lbl">CIN</span><span className="reg-colon">:</span><span className="reg-val">U74900TN1993PTC024718</span></div>
+                    </div>
+                  )}
                 </div>
                 <div className="challan-company-right">
-                  <h3 className="company-full-name">HERA LOGISTICS PVT. LTD.</h3>
+                  <h3 className="company-full-name">{activeLogistics.challanLegalName}</h3>
                   <p className="company-hub-address">
-                    No.2G/69/1, Rajiv Nagar, Thoothukudi - 628008.<br />
+                    {activeLogistics.address}<br />
                     Tamil Nadu, India.<br />
-                    Contact : 96622 96633<br />
-                    E-Mail: contact@heralogistics.com<br />
-                    Website: www.heralogistics.com
+                    Contact : {activeLogistics.phone}<br />
+                    E-Mail: {activeLogistics.email || 'contact@heralogistics.com'}<br />
+                    Website: {activeLogistics.website || 'www.heralogistics.com'}
                   </p>
                 </div>
               </div>
@@ -3761,7 +3999,7 @@ function App() {
                   <p className="remarks-text">Please present this Inward Advice Note upon vehicle arrival at Hera Logistics Warehouse Gate.</p>
                 </div>
                 <div className="footer-sign-col">
-                  <div className="sign-company-name">For Hera Logistics Hub</div>
+                  <div className="sign-company-name">For {activeLogistics.label} Hub</div>
                   <div className="authorised-sign-box"><div className="sign-line-rule"></div><span className="authorised-sign-text">Gate Security / Officer</span></div>
                 </div>
               </div>
@@ -4392,9 +4630,9 @@ function App() {
     return (
       <div className="pwa-install-banner">
         <div className="pwa-install-left">
-          <img src={heraLogo} alt="Hera Logo" className="pwa-install-logo" />
+          <img src={activeLogistics.logo} alt={`${activeLogistics.label} Logo`} className="pwa-install-logo" />
           <div className="pwa-install-text">
-            <strong>Install Hera Logistics App</strong>
+            <strong>Install {activeLogistics.label} App</strong>
             <span>{isIosSafari ? 'Tap Share ⎋ → Add to Home Screen' : 'Add to Home screen for 1-tap stock access'}</span>
           </div>
         </div>
