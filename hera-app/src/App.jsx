@@ -163,6 +163,12 @@ function App() {
 
   const activeLogistics = getLogisticsConfig(currentUser?.logisticsId || 'hera');
 
+  useEffect(() => {
+    document.title = currentUser
+      ? `${activeLogistics.label} - Warehouse Portal`
+      : 'Warehouse & Cold Storage Portal';
+  }, [currentUser, activeLogistics.label]);
+
   // Active page tab inside portal with memory persistence:
   // For Admin: 'adminOverview' (Home) | 'adminInventory' | 'adminIncoming' | 'adminInwardReport' | 'adminChallans'
   // For Client: 'clientHome' (Home) | 'clientInventory' | 'clientSendGoods' | 'clientInwardReport' | 'cart'

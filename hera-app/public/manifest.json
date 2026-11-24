@@ -1,7 +1,7 @@
 {
-  "name": "Hera Logistics - Prime Dry Storage & Warehouse Portal",
-  "short_name": "Hera Logistics",
-  "description": "Prime Dry Storage, Live Inventory & Consignment Portal",
+  "name": "Warehouse & Cold Storage Portal",
+  "short_name": "WMS Portal",
+  "description": "Multi-Warehouse Cold & Dry Storage, Live Inventory & Consignment Portal",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0F172A",
@@ -12,12 +12,6 @@
       "src": "/favicon.svg",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/hera-logo.jpeg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]
