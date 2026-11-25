@@ -1023,7 +1023,7 @@ function App() {
       setStocks([newItem, ...stocks]);
 
       try {
-        await supabase.from('warehouse_stocks').insert([{
+        const { error: addErr } = await supabase.from('warehouse_stocks').insert([{
           logistics_id: activeLogistics.id,
           client_name: newItem.clientName,
           doc_no: newItem.docNo,
@@ -1042,6 +1042,9 @@ function App() {
           unit: newItem.unit,
           weight_kg: newItem.weightKg
         }]);
+        if (!addErr) {
+          await loadSupabaseData(activeLogistics.id);
+        }
         showToast('New stock record added!', 'success');
       } catch (err) {
         console.warn('Supabase insert notice:', err);
@@ -1266,7 +1269,10 @@ function App() {
         unit: item.unit,
         weight_kg: item.weightKg
       }));
-      await supabase.from('warehouse_stocks').insert(dbPayload);
+      const { error: insertErr } = await supabase.from('warehouse_stocks').insert(dbPayload);
+      if (!insertErr) {
+        await loadSupabaseData(activeLogistics.id);
+      }
       showToast(`Added ${newStockItems.length} product(s) to stock!`, 'success');
       navigateToTab('clientInventory');
     } catch (err) {

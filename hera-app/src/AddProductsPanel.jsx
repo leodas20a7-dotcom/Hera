@@ -53,7 +53,8 @@ export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
         return;
       }
       if (cols.length < 3) return;
-      const qtyVal = parseFloat(cols[9] || cols[cols.length - 1]);
+      const hasSubUomCol = cols.length >= 10;
+      const qtyVal = parseFloat(hasSubUomCol ? cols[9] : cols[cols.length - 1]);
       if (!cols[2] || Number.isNaN(qtyVal) || qtyVal <= 0) return;
 
       parsed.push({
@@ -65,7 +66,7 @@ export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
         lotNo: cols[5] || '',
         rateType: cols[6] || (logisticsId === 'kern' ? 'Weekly' : 'Daily'),
         unit: cols[7] || (logisticsId === 'kern' ? 'BOX' : 'BAGS'),
-        subUom: cols[8] || '',
+        subUom: hasSubUomCol ? (cols[8] || '') : '',
         qty: qtyVal
       });
     });
