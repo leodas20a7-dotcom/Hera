@@ -7,6 +7,7 @@ import { supabase } from './supabaseClient';
 import { getLogisticsConfig } from './logisticsConfig';
 import { KERN_INITIAL_STOCKS } from './kernData';
 import { KernStockSummaryReport } from './KernStockSummaryReport';
+import { AddProductsPanel } from './AddProductsPanel';
 
 // Initial empty stocks (Driven 100% by live Supabase realtime data)
 const INITIAL_STOCKS = [];
@@ -1208,6 +1209,70 @@ function App() {
       }
     } catch (err) {
       console.warn('Supabase delivery note sync notice:', err);
+    }
+  };
+
+  // Bulk / Multi-row Add Products directly into warehouse_stocks (Excel fields)
+  const handleBulkAddProducts = async (productRows) => {
+    const clientCompany = currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES';
+    const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
+    const defaultCategory = activeLogistics.id === 'kern' ? 'Cold Storage' : 'Dry Goods';
+
+    const newStockItems = productRows.map((row, idx) => {
+      const qtyNum = parseFloat(row.qty) || 0;
+      const weightNum = row.unit === 'BAGS' ? qtyNum * 50 : qtyNum * 20;
+      return {
+        id: Date.now() + idx,
+        logisticsId: activeLogistics.id,
+        docNo: '',
+        grnNo: row.grnNo,
+        inDate: row.inDate,
+        clientName: clientCompany,
+        product: row.product,
+        category: defaultCategory,
+        brand: row.brand || '',
+        variety: row.variety || '',
+        whLocation: defaultBay,
+        lotNo: row.lotNo || '',
+        count: row.subUom || (row.unit === 'BAGS' ? '50KG BAGS' : '-'),
+        rateType: row.rateType || (activeLogistics.id === 'kern' ? 'Weekly' : 'Daily'),
+        qty: qtyNum,
+        unit: row.unit || 'BOX',
+        subUom: row.subUom || '',
+        weightKg: weightNum,
+        tagClass: 'tag-blue'
+      };
+    });
+
+    setStocks(prev => [...prev, ...newStockItems]);
+
+    try {
+      const dbPayload = newStockItems.map(item => ({
+        logistics_id: activeLogistics.id,
+        client_name: item.clientName,
+        doc_no: '',
+        grn_no: item.grnNo,
+        in_date: item.inDate,
+        product: item.product,
+        category: item.category,
+        brand: item.brand,
+        variety: item.variety,
+        wh_location: item.whLocation,
+        lot_no: item.lotNo,
+        count: item.count,
+        sub_uom: item.subUom,
+        rate_type: item.rateType,
+        qty: item.qty,
+        unit: item.unit,
+        weight_kg: item.weightKg
+      }));
+      await supabase.from('warehouse_stocks').insert(dbPayload);
+      showToast(`Added ${newStockItems.length} product(s) to stock!`, 'success');
+      navigateToTab('clientInventory');
+    } catch (err) {
+      console.warn('Supabase bulk insert notice:', err);
+      showToast(`Added ${newStockItems.length} product(s) locally.`, 'success');
+      navigateToTab('clientInventory');
     }
   };
 
@@ -2537,9 +2602,9 @@ function App() {
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientSendGoods' ? 'active' : ''}`} onClick={() => navigateToTab('clientSendGoods')}>
             <span className="nav-icon">📥</span>
-            <span className="nav-label-desktop">Send Goods to Warehouse</span>
-            <span className="nav-label-tablet">Send Goods</span>
-            <span className="nav-label-mobile">Send</span>
+            <span className="nav-label-desktop">Add Products</span>
+            <span className="nav-label-tablet">Add Products</span>
+            <span className="nav-label-mobile">Add</span>
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('clientInwardReport')}>
             <span className="nav-icon">📄</span>
@@ -2574,7 +2639,7 @@ function App() {
                 <h1 className="page-heading">My Stored Cargo</h1>
               </div>
               <button className="btn-add-inward-top" onClick={() => navigateToTab('clientSendGoods')}>
-                + Send New Goods to Warehouse
+                + Add Products
               </button>
             </div>
 
@@ -2692,170 +2757,13 @@ function App() {
         </div>
       )}
 
-      {/* CLIENT TAB 2: SEND GOODS TO WAREHOUSE */}
+      {/* CLIENT TAB 2: ADD PRODUCTS (EXCEL FIELDS + BULK INSERT) */}
       {activeTab === 'clientSendGoods' && (
-        <div className="cart-page-screen tab-page-enter">
-          <div className="cart-container">
-            <div className="cart-white-card checkout-card">
-              <div className="cart-header-row">
-                <div>
-                  <h2>Send Goods to Warehouse (Inward Consignment)</h2>
-                </div>
-                <button
-                  type="button"
-                  className="btn-status-history-pill"
-                  onClick={() => setShowInwardStatusModal(true)}
-                  title="View Inward Consignment Tracking History"
-                >
-                  <span>📋 Consignment Status History</span>
-                  <span className="cart-badge">
-                    {inwardRequests.filter(r => !currentUser.company || r.clientName.toLowerCase().includes(currentUser.company.toLowerCase().slice(0, 8))).length}
-                  </span>
-                </button>
-              </div>
-
-              <form onSubmit={handleClientInwardSubmit} className="checkout-form">
-                <div className="form-grid-two">
-                  <div className="form-group">
-                    <label>Product / Commodity Name <span className="req">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Whole Cashew Kernels, Pulses, Rice"
-                      value={clientInwardForm.product}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, product: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Commodity Category</label>
-                    <select
-                      value={clientInwardForm.category}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, category: e.target.value })}
-                    >
-                      <option value="Cashew">Cashew & Dry Fruits</option>
-                      <option value="Pulses">Pulses & Legumes</option>
-                      <option value="Rice">Rice & Agro Products</option>
-                      <option value="Spices">Spices & Condiments</option>
-                      <option value="Dry Goods">General Dry Goods</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Brand & Variety</label>
-                    <div className="two-inputs-row">
-                      <input
-                        type="text"
-                        placeholder="Brand (e.g. CAJ)"
-                        value={clientInwardForm.brand}
-                        onChange={(e) => setClientInwardForm({ ...clientInwardForm, brand: e.target.value })}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Variety (e.g. GRADE-W320)"
-                        value={clientInwardForm.variety}
-                        onChange={(e) => setClientInwardForm({ ...clientInwardForm, variety: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Quantity & Packaging <span className="req">*</span></label>
-                    <div className="two-inputs-row">
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        placeholder="Total Quantity"
-                        value={clientInwardForm.qty}
-                        onChange={(e) => setClientInwardForm({ ...clientInwardForm, qty: e.target.value })}
-                      />
-                      <select
-                        value={clientInwardForm.unit}
-                        onChange={(e) => setClientInwardForm({ ...clientInwardForm, unit: e.target.value })}
-                      >
-                        <option value="BAGS">BAGS</option>
-                        <option value="BOX">BOXES / CARTONS</option>
-                        <option value="KG">KG</option>
-                        <option value="TON">TONS</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Estimated Total Weight (KG)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 24000"
-                      value={clientInwardForm.weightKg}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, weightKg: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Lorry / Vehicle Number <span className="req">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. TN22CY7236"
-                      value={clientInwardForm.vehicleNo}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, vehicleNo: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Driver / Transporter Contact Phone</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 9585543555"
-                      value={clientInwardForm.driverPhone}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, driverPhone: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Expected Arrival Date <span className="req">*</span></label>
-                    <input
-                      type="date"
-                      required
-                      value={clientInwardForm.expectedDate}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, expectedDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Your Invoice / Doc Ref No</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. INV/LK/2026/894"
-                      value={clientInwardForm.docNo}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, docNo: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Special Instructions / Remarks</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Moisture sensitive, stack carefully"
-                      value={clientInwardForm.remarks}
-                      onChange={(e) => setClientInwardForm({ ...clientInwardForm, remarks: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-bottom-actions">
-                  <button type="button" className="btn-hero-secondary" onClick={() => navigateToTab('clientInventory')}>
-                    &larr; Back to My Items
-                  </button>
-                  <button type="submit" className="btn-submit-challan">
-                    🚚 Submit Inward Advice &rarr;
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <AddProductsPanel
+          logisticsId={activeLogistics.id}
+          onSaveBulkProducts={handleBulkAddProducts}
+          onBack={() => navigateToTab('clientInventory')}
+        />
       )}
 
       {/* CLIENT TAB 3: INWARD STOCK REPORT & DELIVERY HISTORY */}
