@@ -1223,10 +1223,14 @@ function App() {
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
     const inwardNo = 'INW/' + String(Math.floor(1000000 + Math.random() * 9000000)).padStart(7, '0').slice(0, 7) + '/26-27';
+    const grnNumber = 'GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27';
+    const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
 
     const newReq = {
       id: Date.now(),
       inwardNo: inwardNo,
+      grnNo: grnNumber,
+      whLocation: defaultBay,
       clientName: currentUser.company || currentUser.name,
       product: clientInwardForm.product,
       category: clientInwardForm.category,
@@ -1240,21 +1244,45 @@ function App() {
       expectedDate: clientInwardForm.expectedDate,
       docNo: clientInwardForm.docNo || 'INV/' + Math.floor(100000 + Math.random() * 900000),
       remarks: clientInwardForm.remarks || 'Standard Warehouse Inward Consignment',
-      status: 'PENDING',
+      status: 'ACCEPTED',
       createdAt: formattedDate
     };
 
+    const newStockItem = {
+      id: Date.now() + 1,
+      logisticsId: activeLogistics.id,
+      docNo: newReq.docNo,
+      grnNo: grnNumber,
+      inDate: formattedDate,
+      clientName: newReq.clientName,
+      product: newReq.product,
+      category: newReq.category,
+      brand: newReq.brand,
+      variety: newReq.variety,
+      whLocation: defaultBay,
+      lotNo: 'LOT-' + Math.floor(10000 + Math.random() * 90000),
+      count: newReq.unit === 'BAGS' ? '50KG BAGS' : 'STANDARD',
+      rateType: activeLogistics.id === 'kern' ? 'Weekly' : 'Daily',
+      qty: qtyNum,
+      unit: newReq.unit,
+      subUom: '',
+      weightKg: weightNum,
+      tagClass: 'tag-blue'
+    };
+
+    setStocks(prev => [newStockItem, ...prev]);
     setInwardRequests(prev => [newReq, ...prev]);
     setIssuedInwardReceipt(newReq);
+    showToast('Goods recorded in stock!', 'success');
 
     // Reset form
     setClientInwardForm({
       product: '',
-      category: 'Cashew',
+      category: activeLogistics.id === 'kern' ? 'Cold Storage' : 'Cashew',
       brand: 'CAJ',
       variety: 'GRADE-A',
       qty: '',
-      unit: 'BAGS',
+      unit: activeLogistics.id === 'kern' ? 'BOX' : 'BAGS',
       weightKg: '',
       vehicleNo: '',
       driverPhone: '',
@@ -1264,9 +1292,31 @@ function App() {
     });
 
     try {
+      await supabase.from('warehouse_stocks').insert([{
+        logistics_id: activeLogistics.id,
+        client_name: newStockItem.clientName,
+        doc_no: newStockItem.docNo,
+        grn_no: newStockItem.grnNo,
+        in_date: newStockItem.inDate,
+        product: newStockItem.product,
+        category: newStockItem.category,
+        brand: newStockItem.brand,
+        variety: newStockItem.variety,
+        wh_location: newStockItem.whLocation,
+        lot_no: newStockItem.lotNo,
+        count: newStockItem.count,
+        sub_uom: '',
+        rate_type: newStockItem.rateType,
+        qty: newStockItem.qty,
+        unit: newStockItem.unit,
+        weight_kg: newStockItem.weightKg
+      }]);
+
       await supabase.from('inward_requests').insert([{
         logistics_id: activeLogistics.id,
         inward_no: newReq.inwardNo,
+        grn_no: grnNumber,
+        wh_location: defaultBay,
         client_name: newReq.clientName,
         product: newReq.product,
         category: newReq.category,
@@ -1280,7 +1330,7 @@ function App() {
         expected_date: newReq.expectedDate,
         doc_no: newReq.docNo,
         remarks: newReq.remarks,
-        status: 'PENDING'
+        status: 'ACCEPTED'
       }]);
     } catch (err) {
       console.warn('Supabase inward request sync notice:', err);
@@ -3970,11 +4020,24 @@ function App() {
               </button>
             </div>
             <div className="toolbar-actions">
-              <button className="doc-pdf-btn" onClick={handleDownloadInwardAdvicePdf} disabled={isDownloading}>
-                {isDownloading ? '⏳ Saving PDF...' : '⬇ Download PDF'}
+              <button
+                className="doc-pdf-btn"
+                onClick={handleDownloadInwardAdvicePdf}
+                disabled={isDownloading}
+                title="Download PDF"
+                aria-label="Download PDF"
+                style={{ minWidth: '42px', padding: '8px 12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isDownloading ? '⏳' : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                )}
               </button>
-              <button className="doc-print-btn" onClick={() => window.print()}>
-                🖨️ Print
+              <button className="doc-print-btn" onClick={() => window.print()} title="Print" aria-label="Print">
+                🖨️
               </button>
               <button className="doc-close-btn" onClick={() => setIssuedInwardReceipt(null)}>&times;</button>
             </div>
@@ -4131,8 +4194,18 @@ function App() {
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button className="row-dispatch-btn" onClick={() => { setShowInwardStatusModal(false); setIssuedInwardReceipt(req); }}>
-                          View Slip &rarr;
+                        <button
+                          className="row-dispatch-btn"
+                          title="Download / View Advice"
+                          aria-label="Download / View Advice"
+                          style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          onClick={() => { setShowInwardStatusModal(false); setIssuedInwardReceipt(req); }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
                         </button>
                       </td>
                     </tr>
