@@ -407,7 +407,8 @@ function App() {
   const loadSupabaseData = async (explicitLogisticsId) => {
     try {
       const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
-      const activeLogisticsId = explicitLogisticsId || savedUser?.logisticsId;
+      const validExplicit = typeof explicitLogisticsId === 'string' ? explicitLogisticsId : null;
+      const activeLogisticsId = validExplicit || savedUser?.logisticsId;
       if (!activeLogisticsId) return;
       const byLogistics = (query) =>
         activeLogisticsId === 'kern'
@@ -443,22 +444,13 @@ function App() {
           weightKg: Number(s.weight_kg) || 0,
           tagClass: 'tag-blue'
         }));
-        const parseDateMs = (d) => {
-          if (!d) return 0;
-          const t = Date.parse(String(d).replace(/-/g, ' '));
-          return Number.isNaN(t) ? 0 : t;
-        };
-        const sortDatewise = (list) =>
-          [...list].sort((a, b) => {
-            const diff = parseDateMs(a.inDate) - parseDateMs(b.inDate);
-            if (diff !== 0) return diff;
-            return (a.grnNo || '').localeCompare(b.grnNo || '');
-          });
+        const sortByGrn = (list) =>
+          [...list].sort((a, b) => (a.grnNo || '').localeCompare(b.grnNo || ''));
 
         if (activeLogisticsId === 'kern' && mapped.length === 0) {
-          setStocks(sortDatewise(KERN_INITIAL_STOCKS));
+          setStocks(sortByGrn(KERN_INITIAL_STOCKS));
         } else {
-          setStocks(sortDatewise(mapped));
+          setStocks(sortByGrn(mapped));
         }
       }
 
@@ -470,6 +462,7 @@ function App() {
       );
 
       if (challanData) {
+        const isKern = activeLogisticsId === 'kern';
         const mappedChallans = challanData.map(c => ({
           id: c.id,
           dcNo: c.dc_no,
@@ -485,28 +478,28 @@ function App() {
           totalQty: Number(c.total_qty),
           items: (c.delivery_note_items && c.delivery_note_items.length > 0)
             ? c.delivery_note_items.map(i => ({
-              grnNo: i.grn_no || 'GRN/0001345/26-27',
-              brand: i.brand || 'Sun Enterprises',
-              product: i.product || 'Raw Cashew Nuts',
-              variety: i.variety || 'RAW-CASHEW',
-              lotNo: i.lot_no || 'LOT-CASHEW',
-              count: i.count || '50KG BAGS',
-              whLocation: i.wh_location || 'SIP-B02',
+              grnNo: i.grn_no || (isKern ? '—' : 'GRN/0001345/26-27'),
+              brand: i.brand || (isKern ? '—' : 'Sun Enterprises'),
+              product: i.product || (isKern ? 'Fruits' : 'Raw Cashew Nuts'),
+              variety: i.variety || (isKern ? (i.product || '—') : 'RAW-CASHEW'),
+              lotNo: i.lot_no || (isKern ? '—' : 'LOT-CASHEW'),
+              count: i.count || (isKern ? '—' : '50KG BAGS'),
+              whLocation: i.wh_location || (isKern ? 'COLD-HUB' : 'SIP-B02'),
               selectedQty: Number(i.dispatched_qty) || Number(c.total_qty),
-              unit: i.unit || 'BAGS',
-              rateType: i.rate_type || 'Daily'
+              unit: i.unit || (isKern ? 'BOX' : 'BAGS'),
+              rateType: i.rate_type || (isKern ? 'Weekly' : 'Daily')
             }))
             : [{
-              grnNo: 'GRN/0001345/26-27',
-              brand: 'Sun Enterprises',
-              product: 'Raw Cashew Nuts',
-              variety: 'RAW-CASHEW',
-              lotNo: 'LOT-CASHEW',
-              count: '50KG BAGS',
-              whLocation: 'SIP-B02',
+              grnNo: isKern ? '—' : 'GRN/0001345/26-27',
+              brand: isKern ? '—' : 'Sun Enterprises',
+              product: isKern ? 'Fruits' : 'Raw Cashew Nuts',
+              variety: isKern ? '—' : 'RAW-CASHEW',
+              lotNo: isKern ? '—' : 'LOT-CASHEW',
+              count: isKern ? '—' : '50KG BAGS',
+              whLocation: isKern ? 'COLD-HUB' : 'SIP-B02',
               selectedQty: Number(c.total_qty),
-              unit: 'BAGS',
-              rateType: 'Daily'
+              unit: isKern ? 'BOX' : 'BAGS',
+              rateType: isKern ? 'Weekly' : 'Daily'
             }]
         }));
         setChallanHistory(mappedChallans);
@@ -520,16 +513,17 @@ function App() {
       );
 
       if (inwardData) {
+        const isKern = activeLogisticsId === 'kern';
         const mappedInwards = inwardData.map(r => ({
           id: r.id,
           inwardNo: r.inward_no,
           clientName: r.client_name,
           product: r.product,
-          category: r.category || 'General',
-          brand: r.brand || 'CAJ',
-          variety: r.variety || 'STANDARD',
+          category: r.category || (isKern ? 'Cold Storage' : 'General'),
+          brand: r.brand || (isKern ? '' : 'CAJ'),
+          variety: r.variety || (isKern ? '' : 'STANDARD'),
           qty: Number(r.qty),
-          unit: r.unit || 'BAGS',
+          unit: r.unit || (isKern ? 'BOX' : 'BAGS'),
           weightKg: Number(r.weight_kg) || 0,
           vehicleNo: r.vehicle_no,
           driverPhone: r.driver_phone,
@@ -2393,7 +2387,7 @@ function App() {
                     <button
                       type="button"
                       className="btn-status-history-pill"
-                      onClick={loadSupabaseData}
+                      onClick={() => loadSupabaseData(currentUser?.logisticsId)}
                       style={{ padding: '5px 12px', fontSize: '0.76rem' }}
                     >
                       🔄 Refresh
@@ -2412,9 +2406,13 @@ function App() {
                         <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                           <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                             <div>
-                              <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.destination || 'Thoothukudi / Chennai Hub'}</span>
+                              <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.customerName || dc.destination || activeLogistics.hubLabel}</span>
                               <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#334155', marginTop: '3px' }}>
-                                Lorry: {dc.vehicleNo || 'TN-04-AB-1234'} • <span style={{ color: '#0F172A', fontWeight: '700' }}>{dc.customerName}</span>
+                                {[
+                                  dc.items?.map(i => i.product).filter(Boolean).join(', '),
+                                  dc.vehicleNo ? `Lorry: ${dc.vehicleNo}` : '',
+                                  dc.destination || ''
+                                ].filter(Boolean).join(' • ')}
                               </div>
                             </div>
                             <span className="wh-bay-badge" style={{ fontSize: '0.82rem', padding: '4px 10px', background: '#F8FAFC', color: '#0F172A', border: '1px solid #E2E8F0' }}>
@@ -2937,7 +2935,7 @@ function App() {
                   <button
                     type="button"
                     className="btn-status-history-pill"
-                    onClick={loadSupabaseData}
+                    onClick={() => loadSupabaseData(currentUser?.logisticsId)}
                     style={{ padding: '5px 12px', fontSize: '0.76rem' }}
                   >
                     🔄 Refresh
@@ -2956,9 +2954,13 @@ function App() {
                       <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                         <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                           <div>
-                            <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.destination || 'Thoothukudi / Chennai Hub'}</span>
+                            <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0F172A' }}>{dc.customerName || dc.destination || activeLogistics.hubLabel}</span>
                             <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#334155', marginTop: '3px' }}>
-                              Lorry: {dc.vehicleNo || 'TN-04-AB-1234'}
+                              {[
+                                dc.items?.map(i => i.product).filter(Boolean).join(', '),
+                                dc.vehicleNo ? `Lorry: ${dc.vehicleNo}` : '',
+                                dc.destination || ''
+                              ].filter(Boolean).join(' • ')}
                             </div>
                           </div>
                           <span className="wh-bay-badge" style={{ fontSize: '0.82rem', padding: '4px 10px', background: '#F8FAFC', color: '#0F172A', border: '1px solid #E2E8F0' }}>
