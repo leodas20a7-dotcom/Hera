@@ -3945,6 +3945,7 @@ function App() {
                     <th>Product &amp; Brand</th>
                     <th>Supplier / Notes</th>
                     <th style={{ textAlign: 'right' }}>Inward Qty</th>
+                    <th style={{ textAlign: 'center', width: '64px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3959,6 +3960,21 @@ function App() {
                       <td>{req.remarks || req.clientName}</td>
                       <td style={{ textAlign: 'right', fontWeight: '800', color: '#0F766E' }}>
                         {Number(req.qty || 0).toLocaleString()} {req.unit || 'BOX'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="row-dispatch-btn"
+                          aria-label="Download"
+                          style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          onClick={() => setIssuedInwardReceipt(req)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -3978,7 +3994,22 @@ function App() {
                   </div>
                   <div className="mobile-card-footer">
                     <span className="mobile-more-info">{req.grnNo || req.inwardNo}</span>
-                    <strong style={{ color: '#0F766E' }}>{Number(req.qty || 0).toLocaleString()} {req.unit || 'BOX'}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <strong style={{ color: '#0F766E' }}>{Number(req.qty || 0).toLocaleString()} {req.unit || 'BOX'}</strong>
+                      <button
+                        type="button"
+                        className="mobile-card-action-btn"
+                        aria-label="Download"
+                        style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => setIssuedInwardReceipt(req)}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
