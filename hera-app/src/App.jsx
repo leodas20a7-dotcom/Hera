@@ -3481,16 +3481,10 @@ function App() {
           <div className="challan-toolbar challan-toolbar-desktop">
             <div className="toolbar-tabs">
               <button
-                className={`challan-tab-btn ${activeChallanTab === 'delivery' ? 'active' : ''}`}
+                className="challan-tab-btn active"
                 onClick={() => setActiveChallanTab('delivery')}
               >
                 📄 Delivery Note / Challan
-              </button>
-              <button
-                className={`challan-tab-btn ${activeChallanTab === 'inward' ? 'active' : ''}`}
-                onClick={() => setActiveChallanTab('inward')}
-              >
-                📥 Inward Receipt (GRN)
               </button>
             </div>
 
@@ -3779,38 +3773,6 @@ function App() {
               </div>
 
               <div className="action-menu-list">
-                <button
-                  type="button"
-                  className={`action-menu-item ${activeChallanTab === 'delivery' ? 'active-selection' : ''}`}
-                  onClick={() => {
-                    setActiveChallanTab('delivery');
-                    setShowChallanActionMenu(false);
-                  }}
-                >
-                  <span className="action-item-icon">📄</span>
-                  <div className="action-item-text">
-                    <strong>Delivery Note / Challan</strong>
-                    <span>Customer delivery & outward dispatch note</span>
-                  </div>
-                  {activeChallanTab === 'delivery' && <span className="action-check-badge">ACTIVE</span>}
-                </button>
-
-                <button
-                  type="button"
-                  className={`action-menu-item ${activeChallanTab === 'inward' ? 'active-selection' : ''}`}
-                  onClick={() => {
-                    setActiveChallanTab('inward');
-                    setShowChallanActionMenu(false);
-                  }}
-                >
-                  <span className="action-item-icon">📥</span>
-                  <div className="action-item-text">
-                    <strong>Inward Goods Receipt (GRN)</strong>
-                    <span>Warehouse stock entry & gate pass record</span>
-                  </div>
-                  {activeChallanTab === 'inward' && <span className="action-check-badge">ACTIVE</span>}
-                </button>
-
                 <button
                   type="button"
                   className="action-menu-item action-primary-pdf"
