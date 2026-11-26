@@ -4796,4 +4796,17 @@ html, body {
   .mobile-hide-subtext {
     display: none !important;
   }
+  .report-view-toggle {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    width: 100% !important;
+    gap: 4px !important;
+  }
+  .report-toggle-btn {
+    padding: 8px 6px !important;
+    font-size: 0.78rem !important;
+    text-align: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
 }

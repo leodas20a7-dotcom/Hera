@@ -2246,21 +2246,27 @@ function App() {
                     className={`report-toggle-btn ${reportSubTab === 'stockReport' ? 'active' : ''}`}
                     onClick={() => setReportSubTab('stockReport')}
                   >
-                    📦 Stock View (Current Stock)
+                    <span className="nav-label-desktop">📦 Stock View (Current Stock)</span>
+                    <span className="nav-label-tablet">📦 Stock View</span>
+                    <span className="nav-label-mobile">📦 Stock</span>
                   </button>
                   <button
                     type="button"
                     className={`report-toggle-btn ${reportSubTab === 'deliveryHistory' ? 'active' : ''}`}
                     onClick={() => setReportSubTab('deliveryHistory')}
                   >
-                    🚚 Delivery History
+                    <span className="nav-label-desktop">🚚 Delivery History</span>
+                    <span className="nav-label-tablet">🚚 Delivery</span>
+                    <span className="nav-label-mobile">🚚 Out</span>
                   </button>
                   <button
                     type="button"
                     className={`report-toggle-btn ${reportSubTab === 'inwardHistory' ? 'active' : ''}`}
                     onClick={() => setReportSubTab('inwardHistory')}
                   >
-                    📥 Inward History
+                    <span className="nav-label-desktop">📥 Inward History</span>
+                    <span className="nav-label-tablet">📥 Inward</span>
+                    <span className="nav-label-mobile">📥 In</span>
                   </button>
                 </div>
 
@@ -2794,21 +2800,27 @@ function App() {
                   className={`report-toggle-btn ${reportSubTab === 'stockReport' ? 'active' : ''}`}
                   onClick={() => setReportSubTab('stockReport')}
                 >
-                  📦 Stock View (Current Stock)
+                  <span className="nav-label-desktop">📦 Stock View (Current Stock)</span>
+                  <span className="nav-label-tablet">📦 Stock View</span>
+                  <span className="nav-label-mobile">📦 Stock</span>
                 </button>
                 <button
                   type="button"
                   className={`report-toggle-btn ${reportSubTab === 'deliveryHistory' ? 'active' : ''}`}
                   onClick={() => setReportSubTab('deliveryHistory')}
                 >
-                  🚚 Delivery History
+                  <span className="nav-label-desktop">🚚 Delivery History</span>
+                  <span className="nav-label-tablet">🚚 Delivery</span>
+                  <span className="nav-label-mobile">🚚 Out</span>
                 </button>
                 <button
                   type="button"
                   className={`report-toggle-btn ${reportSubTab === 'inwardHistory' ? 'active' : ''}`}
                   onClick={() => setReportSubTab('inwardHistory')}
                 >
-                  📥 Inward History
+                  <span className="nav-label-desktop">📥 Inward History</span>
+                  <span className="nav-label-tablet">📥 Inward</span>
+                  <span className="nav-label-mobile">📥 In</span>
                 </button>
               </div>
 
