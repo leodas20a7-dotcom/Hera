@@ -2261,6 +2261,13 @@ function App() {
                   >
                     🚚 Delivery History
                   </button>
+                  <button
+                    type="button"
+                    className={`report-toggle-btn ${reportSubTab === 'inwardHistory' ? 'active' : ''}`}
+                    onClick={() => setReportSubTab('inwardHistory')}
+                  >
+                    📥 Inward History
+                  </button>
                 </div>
 
                 {reportSubTab === 'stockReport' ? (
@@ -2270,6 +2277,10 @@ function App() {
                   >
                     Download PDF
                   </button>
+                ) : reportSubTab === 'inwardHistory' ? (
+                  <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
+                    Total Inwards: <strong>{inwardRequests.length}</strong>
+                  </div>
                 ) : (
                   <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
                     Total Dispatches: <strong>{challanHistory.length}</strong>
@@ -2368,6 +2379,8 @@ function App() {
                   </div>
                 </div>
                 )
+              ) : reportSubTab === 'inwardHistory' ? (
+                renderInwardHistoryCard()
               ) : (
                 <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
                   <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2792,6 +2805,13 @@ function App() {
                 >
                   🚚 Delivery History
                 </button>
+                <button
+                  type="button"
+                  className={`report-toggle-btn ${reportSubTab === 'inwardHistory' ? 'active' : ''}`}
+                  onClick={() => setReportSubTab('inwardHistory')}
+                >
+                  📥 Inward History
+                </button>
               </div>
 
               {reportSubTab === 'stockReport' ? (
@@ -2801,6 +2821,10 @@ function App() {
                 >
                   Download PDF
                 </button>
+              ) : reportSubTab === 'inwardHistory' ? (
+                <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
+                  Total Inwards: <strong>{inwardRequests.length}</strong>
+                </div>
               ) : (
                 <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
                   Total Dispatches: <strong>{challanHistory.length}</strong>
@@ -2899,6 +2923,8 @@ function App() {
                 </div>
               </div>
               )
+            ) : reportSubTab === 'inwardHistory' ? (
+              renderInwardHistoryCard()
             ) : (
               <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
                 <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3918,6 +3944,83 @@ function App() {
             </div>
           </form>
         </div>
+      </div>
+    );
+  }
+
+  function renderInwardHistoryCard() {
+    return (
+      <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
+        <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800' }}>Past Inward History ({inwardRequests.length})</h3>
+          </div>
+          <button
+            type="button"
+            className="btn-hero-secondary"
+            style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => loadSupabaseData(currentUser?.logisticsId)}
+          >
+            🔄 Refresh
+          </button>
+        </div>
+
+        {inwardRequests.length === 0 ? (
+          <div className="empty-cart-card" style={{ padding: '40px 20px' }}>
+            <div className="empty-icon">📥</div>
+            <h3>No Inward History Yet</h3>
+          </div>
+        ) : (
+          <div className="stocks-table-wrapper">
+            <div className="stocks-desktop-table">
+              <table className="stocks-table">
+                <thead>
+                  <tr>
+                    <th>GRN No</th>
+                    <th>Date</th>
+                    <th>Product &amp; Brand</th>
+                    <th>Supplier / Notes</th>
+                    <th style={{ textAlign: 'right' }}>Inward Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inwardRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td><div className="doc-num-bold">{req.grnNo || req.inwardNo}</div></td>
+                      <td>{req.expectedDate || req.createdAt}</td>
+                      <td>
+                        <strong>{req.product}</strong>
+                        <div className="grn-sub">{[req.brand, req.variety].filter(Boolean).join(' • ')}</div>
+                      </td>
+                      <td>{req.remarks || req.clientName}</td>
+                      <td style={{ textAlign: 'right', fontWeight: '800', color: '#0F766E' }}>
+                        {Number(req.qty || 0).toLocaleString()} {req.unit || 'BOX'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="stocks-mobile-cards">
+              {inwardRequests.map((req) => (
+                <div key={req.id} className="mobile-stock-card">
+                  <div className="mobile-card-top">
+                    <div className="mobile-card-product">
+                      <span className="mobile-product-name">{req.product}</span>
+                      <span className="mobile-client-name">{req.remarks || req.clientName}</span>
+                    </div>
+                    <span className="wh-bay-badge">{req.expectedDate || req.createdAt}</span>
+                  </div>
+                  <div className="mobile-card-footer">
+                    <span className="mobile-more-info">{req.grnNo || req.inwardNo}</span>
+                    <strong style={{ color: '#0F766E' }}>{Number(req.qty || 0).toLocaleString()} {req.unit || 'BOX'}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
