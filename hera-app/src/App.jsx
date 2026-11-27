@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import './App.css';
 import heraLogo from './assets/HERA LOGO.jpeg';
@@ -403,13 +403,23 @@ function App() {
     localStorage.setItem('hera_install_dismissed', 'true');
   };
 
+  const lastSyncRef = useRef({ id: null, ts: 0 });
+
   // Reusable Live Supabase Sync function (scoped strictly by active logistics: 'hera' | 'kern')
-  const loadSupabaseData = async (explicitLogisticsId) => {
+  const loadSupabaseData = async (explicitLogisticsId, options = {}) => {
     try {
       const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
       const validExplicit = typeof explicitLogisticsId === 'string' ? explicitLogisticsId : null;
       const activeLogisticsId = validExplicit || savedUser?.logisticsId;
       if (!activeLogisticsId) return;
+
+      // Prevent duplicate back-to-back fetches (mount + realtime + effect) within 2.5s
+      const now = Date.now();
+      if (!options.force && lastSyncRef.current.id === activeLogisticsId && now - lastSyncRef.current.ts < 2500) {
+        return;
+      }
+      lastSyncRef.current = { id: activeLogisticsId, ts: now };
+
       const byLogistics = (query) =>
         activeLogisticsId === 'kern'
           ? query.eq('logistics_id', 'kern')
@@ -418,7 +428,7 @@ function App() {
       const { data: stockData } = await byLogistics(
         supabase
           .from('warehouse_stocks')
-          .select('*')
+          .select('id, logistics_id, doc_no, grn_no, in_date, client_name, product, category, brand, variety, wh_location, lot_no, count, rate_type, qty, unit, sub_uom, weight_kg')
           .order('created_at', { ascending: activeLogisticsId === 'kern' })
       );
 
@@ -457,7 +467,7 @@ function App() {
       const { data: challanData } = await byLogistics(
         supabase
           .from('delivery_notes')
-          .select('*, delivery_note_items(*)')
+          .select('id, dc_no, dc_date, gate_in_no, customer_name, address, contact_person, contact_no, destination, vehicle_no, prepared_by, total_qty, delivery_note_items(grn_no, brand, product, variety, lot_no, count, wh_location, dispatched_qty, unit, rate_type)')
           .order('created_at', { ascending: false })
       );
 
@@ -508,7 +518,7 @@ function App() {
       const { data: inwardData } = await byLogistics(
         supabase
           .from('inward_requests')
-          .select('*')
+          .select('id, inward_no, client_name, product, category, brand, variety, qty, unit, weight_kg, vehicle_no, driver_phone, expected_date, doc_no, remarks, status, grn_no, wh_location, created_at')
           .order('created_at', { ascending: false })
       );
 
@@ -542,13 +552,8 @@ function App() {
     }
   };
 
-  // Live Supabase Sync & Realtime Subscription
+  // Live Supabase Realtime Subscription (single mount subscription)
   useEffect(() => {
-    const initialUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
-    if (initialUser?.logisticsId) {
-      loadSupabaseData(initialUser.logisticsId);
-    }
-
     const reloadForActiveUser = () => {
       const u = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
       if (u?.logisticsId) loadSupabaseData(u.logisticsId);
@@ -567,14 +572,7 @@ function App() {
     };
   }, []);
 
-  // Fetch when delivery note modal opens or report tab opens
-  useEffect(() => {
-    if (currentUser?.logisticsId && (showCustomerChallanModal || activeTab === 'clientInwardReport' || activeTab === 'adminInwardReport')) {
-      loadSupabaseData(currentUser.logisticsId);
-    }
-  }, [showCustomerChallanModal, activeTab, reportSubTab, currentUser?.logisticsId]);
-
-  // Reload live Supabase data whenever active logistics switches ('hera' <-> 'kern')
+  // Load live Supabase data once on login or when active logistics switches ('hera' <-> 'kern')
   useEffect(() => {
     if (currentUser?.logisticsId) {
       loadSupabaseData(currentUser.logisticsId);
@@ -613,7 +611,10 @@ function App() {
     try {
       const savedUser = JSON.parse(localStorage.getItem('hera_current_user') || 'null');
       const activeId = savedUser?.logisticsId || 'hera';
-      const query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const query = supabase
+        .from('profiles')
+        .select('id, phone, email, pin, role, company_name, logistics_id')
+        .order('created_at', { ascending: false });
       const { data } = activeId === 'kern'
         ? await query.eq('logistics_id', 'kern')
         : await query.or('logistics_id.eq.hera,logistics_id.is.null');
@@ -681,10 +682,13 @@ function App() {
       }
 
       try {
-        // Query Supabase profiles table filtered by selected logistics ('hera' | 'kern')
-        const { data: matchedProfiles, error: fetchErr } = await supabase
+        // Query Supabase profiles table filtered server-side by selected logistics ('hera' | 'kern')
+        const profileQuery = supabase
           .from('profiles')
-          .select('*');
+          .select('id, phone, email, pin, role, company_name, contact_person, address, logistics_id');
+        const { data: matchedProfiles, error: fetchErr } = selectedLogistics === 'kern'
+          ? await profileQuery.eq('logistics_id', 'kern')
+          : await profileQuery.or('logistics_id.eq.hera,logistics_id.is.null');
 
         let foundUser = null;
         if (matchedProfiles && matchedProfiles.length > 0) {
@@ -1037,7 +1041,7 @@ function App() {
           weight_kg: newItem.weightKg
         }]);
         if (!addErr) {
-          await loadSupabaseData(activeLogistics.id);
+          await loadSupabaseData(activeLogistics.id, { force: true });
         }
         showToast('New stock record added!', 'success');
       } catch (err) {
@@ -1265,7 +1269,7 @@ function App() {
       }));
       const { error: insertErr } = await supabase.from('warehouse_stocks').insert(dbPayload);
       if (!insertErr) {
-        await loadSupabaseData(activeLogistics.id);
+        await loadSupabaseData(activeLogistics.id, { force: true });
       }
       showToast(`Added ${newStockItems.length} product(s) to stock!`, 'success');
       navigateToTab('clientInventory');
@@ -2393,7 +2397,7 @@ function App() {
                     <button
                       type="button"
                       className="btn-status-history-pill"
-                      onClick={() => loadSupabaseData(currentUser?.logisticsId)}
+                      onClick={() => loadSupabaseData(currentUser?.logisticsId, { force: true })}
                       style={{ padding: '5px 12px', fontSize: '0.76rem' }}
                     >
                       🔄 Refresh
@@ -2947,7 +2951,7 @@ function App() {
                   <button
                     type="button"
                     className="btn-status-history-pill"
-                    onClick={() => loadSupabaseData(currentUser?.logisticsId)}
+                    onClick={() => loadSupabaseData(currentUser?.logisticsId, { force: true })}
                     style={{ padding: '5px 12px', fontSize: '0.76rem' }}
                   >
                     🔄 Refresh
@@ -3935,7 +3939,7 @@ function App() {
             type="button"
             className="btn-hero-secondary"
             style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={() => loadSupabaseData(currentUser?.logisticsId)}
+            onClick={() => loadSupabaseData(currentUser?.logisticsId, { force: true })}
           >
             🔄 Refresh
           </button>
