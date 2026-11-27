@@ -14,28 +14,40 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
   const [scaledHeight, setScaledHeight] = useState(null);
   const previewWrapRef = useRef(null);
   const sheetRef = useRef(null);
+  const prevMobileRef = useRef(isMobile);
 
   useEffect(() => {
-    const handleResize = () => {
+    const updateBreakpoint = () => {
       const mobileNow = window.innerWidth < 768;
       setIsMobile(mobileNow);
-      setViewMode(mobileNow ? 'summary' : 'pdf');
-      if (previewWrapRef.current && sheetRef.current) {
+      if (mobileNow !== prevMobileRef.current) {
+        prevMobileRef.current = mobileNow;
+        setViewMode(mobileNow ? 'summary' : 'pdf');
+      }
+    };
+
+    window.addEventListener('resize', updateBreakpoint);
+    return () => window.removeEventListener('resize', updateBreakpoint);
+  }, []);
+
+  useEffect(() => {
+    const updatePdfScale = () => {
+      if (viewMode === 'pdf' && previewWrapRef.current && sheetRef.current) {
         const availWidth = previewWrapRef.current.clientWidth;
         if (availWidth > 0 && availWidth < A4_PREVIEW_WIDTH) {
           const nextScale = Math.max(0.35, availWidth / A4_PREVIEW_WIDTH);
           setPdfScale(nextScale);
           setScaledHeight(sheetRef.current.scrollHeight * nextScale);
-        } else {
-          setPdfScale(1);
-          setScaledHeight(null);
+          return;
         }
       }
+      setPdfScale(1);
+      setScaledHeight(null);
     };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    updatePdfScale();
+    window.addEventListener('resize', updatePdfScale);
+    return () => window.removeEventListener('resize', updatePdfScale);
   }, [viewMode, stocks]);
 
   // 1. Group stocks by GRN number while preserving order
@@ -357,21 +369,19 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
           {pages.map((pageRows, pageIdx) => {
             const isLastPage = pageIdx === totalPages - 1;
             return (
-              <div
-                key={pageIdx}
-                style={{
-                  background: '#ffffff',
-                  color: '#000000',
-                  fontFamily: 'Arial, Helvetica, sans-serif',
-                  marginBottom: isLastPage ? '0' : '16px',
-                  minHeight: '266mm',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  pageBreakAfter: isLastPage ? 'auto' : 'always',
-                  breakAfter: isLastPage ? 'auto' : 'page'
-                }}
-              >
+              <React.Fragment key={pageIdx}>
+                <div
+                  className="kern-pdf-page"
+                  style={{
+                    background: '#ffffff',
+                    color: '#000000',
+                    fontFamily: 'Arial, Helvetica, sans-serif',
+                    minHeight: '260mm',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
                 {/* Outer Bordered Box (Hugs table on last page just like SSK.pdf) */}
                 <div
                   className="official-report-sheet kern-stock-summary-sheet"
@@ -605,6 +615,19 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
                   Page {pageIdx + 1} of {totalPages}
                 </div>
               </div>
+              {!isLastPage && (
+                <div
+                  className="html2pdf__page-break"
+                  style={{
+                    pageBreakBefore: 'always',
+                    breakBefore: 'page',
+                    height: 0,
+                    margin: 0,
+                    padding: 0
+                  }}
+                />
+              )}
+              </React.Fragment>
             );
           })}
         </div>

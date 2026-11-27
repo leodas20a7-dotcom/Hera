@@ -171,15 +171,15 @@ function App() {
   }, [currentUser, activeLogistics.label]);
 
   // Active page tab inside portal with memory persistence:
-  // For Admin: 'adminOverview' (Home) | 'adminInventory' | 'adminIncoming' | 'adminInwardReport' | 'adminChallans'
-  // For Client: 'clientHome' (Home) | 'clientInventory' | 'clientSendGoods' | 'clientInwardReport' | 'cart'
+  // For Admin: 'adminInventory' | 'adminIncoming' | 'adminInwardReport' | 'adminChallans'
+  // For Client: 'clientInventory' | 'clientSendGoods' | 'clientInwardReport' | 'cart'
   const [activeTab, setActiveTab] = useState(() => {
     const savedUser = localStorage.getItem('hera_current_user');
     if (!savedUser) return 'portalLogin';
     const savedTab = localStorage.getItem('hera_active_tab');
-    if (savedTab && savedTab !== 'portalLogin') return savedTab;
+    if (savedTab && savedTab !== 'portalLogin' && savedTab !== 'adminOverview' && savedTab !== 'clientHome') return savedTab;
     const parsed = JSON.parse(savedUser);
-    return parsed.role === 'admin' ? 'adminOverview' : 'clientInventory';
+    return parsed.role === 'admin' ? 'adminInventory' : 'clientInventory';
   });
 
   // Track and persist active tab in memory
@@ -758,7 +758,7 @@ function App() {
           setInwardRequests([]);
           showToast('Login successful', 'success');
           setCurrentUser(userSession);
-          setActiveTab(userSession.role === 'admin' ? 'adminOverview' : 'clientInventory');
+          setActiveTab(userSession.role === 'admin' ? 'adminInventory' : 'clientInventory');
           setPhoneInput('');
           setPinInput('');
           setIsLoggingIn(false);
@@ -867,8 +867,8 @@ function App() {
       if (e.state && e.state.tab) {
         setActiveTab(e.state.tab);
       } else if (currentUser) {
-        // Fallback to primary Stock screen for client
-        const homeTab = currentUser.role === 'admin' ? 'adminOverview' : 'clientInventory';
+        // Fallback to primary Stock screen
+        const homeTab = currentUser.role === 'admin' ? 'adminInventory' : 'clientInventory';
         setActiveTab(homeTab);
       }
     };
@@ -1215,7 +1215,11 @@ function App() {
 
   // Bulk / Multi-row Add Products directly into warehouse_stocks (Excel fields)
   const handleBulkAddProducts = async (productRows) => {
-    const clientCompany = currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES';
+    const clientCompany =
+      currentUser?.role === 'admin'
+        ? 'LORDS AND KINGS ENTERPRISES'
+        : currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES';
+    const targetInventoryTab = currentUser?.role === 'admin' ? 'adminInventory' : 'clientInventory';
     const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
     const defaultCategory = activeLogistics.id === 'kern' ? 'Cold Storage' : 'Dry Goods';
 
@@ -1272,11 +1276,11 @@ function App() {
         await loadSupabaseData(activeLogistics.id, { force: true });
       }
       showToast(`Added ${newStockItems.length} product(s) to stock!`, 'success');
-      navigateToTab('clientInventory');
+      navigateToTab(targetInventoryTab);
     } catch (err) {
       console.warn('Supabase bulk insert notice:', err);
       showToast(`Added ${newStockItems.length} product(s) locally.`, 'success');
-      navigateToTab('clientInventory');
+      navigateToTab(targetInventoryTab);
     }
   };
 
@@ -1638,6 +1642,17 @@ function App() {
     if (!element) return;
     setIsDownloading(true);
 
+    const prevTransform = element.style.transform;
+    const prevWidth = element.style.width;
+    const prevOrigin = element.style.transformOrigin;
+
+    // Ensure full-size A4 capture even when Mobile PDF Preview is CSS-scaled
+    if (activeLogistics.id === 'kern') {
+      element.style.transform = 'none';
+      element.style.transformOrigin = 'top left';
+      element.style.width = '794px';
+    }
+
     const clientSuffix = currentUser?.role === 'admin'
       ? 'Admin_Ledger'
       : (currentUser?.company?.replace(/[^a-zA-Z0-9]/g, '_') || 'Stock_Report');
@@ -1650,16 +1665,28 @@ function App() {
       margin: activeLogistics.id === 'kern' ? [6, 6, 6, 6] : [6, 6, 6, 6],
       filename: filename,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+      html2canvas: activeLogistics.id === 'kern'
+        ? { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff', width: 794, windowWidth: 794, scrollY: 0 }
+        : { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] }
+      pagebreak: { mode: ['css', 'legacy'], before: '.html2pdf__page-break' }
+    };
+
+    const restoreStyles = () => {
+      if (activeLogistics.id === 'kern') {
+        element.style.transform = prevTransform;
+        element.style.width = prevWidth;
+        element.style.transformOrigin = prevOrigin;
+      }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
+      restoreStyles();
       setIsDownloading(false);
       setShowReportDownloadConfirm(false);
     }).catch((err) => {
       console.warn('PDF save error:', err);
+      restoreStyles();
       setIsDownloading(false);
       setShowReportDownloadConfirm(false);
     });
@@ -1891,17 +1918,17 @@ function App() {
           </div>
 
           <nav className="header-nav-segmented admin-nav">
-            <button className={`nav-item-btn ${activeTab === 'adminOverview' ? 'active' : ''}`} onClick={() => navigateToTab('adminOverview')}>
-              <span className="nav-icon">📊</span>
-              <span className="nav-label-desktop">Home</span>
-              <span className="nav-label-tablet">Home</span>
-              <span className="nav-label-mobile">Home</span>
-            </button>
             <button className={`nav-item-btn ${activeTab === 'adminInventory' ? 'active' : ''}`} onClick={() => navigateToTab('adminInventory')}>
               <span className="nav-icon">🏢</span>
               <span className="nav-label-desktop">All Stock</span>
               <span className="nav-label-tablet">Stock</span>
               <span className="nav-label-mobile">Stock</span>
+            </button>
+            <button className={`nav-item-btn ${activeTab === 'adminAddProducts' ? 'active' : ''}`} onClick={() => navigateToTab('adminAddProducts')}>
+              <span className="nav-icon">📥</span>
+              <span className="nav-label-desktop">Add Products</span>
+              <span className="nav-label-tablet">Add</span>
+              <span className="nav-label-mobile">Add</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminIncoming' ? 'active' : ''}`} onClick={() => navigateToTab('adminIncoming')}>
               <span className="nav-icon">📥</span>
@@ -1940,21 +1967,7 @@ function App() {
           </div>
         </header>
 
-        {/* TAB 1: MASTER HOME & PRIME DRY STORAGE HERO */}
-        {activeTab === 'adminOverview' && (
-          <div className="home-page-screen tab-page-enter">
-            <div className="home-content-container">
-              {/* Full-width clean hero matching reference image */}
-              <WarehouseHeroBanner
-                logistics={activeLogistics}
-                onManageInventory={() => navigateToTab('adminInventory')}
-                onLearnMore={() => setShowLearnMoreModal(true)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: INVENTORY */}
+        {/* TAB 1: INVENTORY */}
         {activeTab === 'adminInventory' && (
           <div className="stocks-page-screen tab-page-enter">
             <div className="stocks-container">
@@ -1962,8 +1975,8 @@ function App() {
                 <div>
                   <h1 className="page-heading">All Stored Stock</h1>
                 </div>
-                <button className="btn-add-inward-top" onClick={handleOpenAddInward}>
-                  + Add New Stock
+                <button className="btn-add-inward-top" onClick={() => navigateToTab('adminAddProducts')}>
+                  + Add Products
                 </button>
               </div>
 
@@ -2092,6 +2105,15 @@ function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ADMIN TAB: ADD PRODUCTS (EXCEL FIELDS + BULK INSERT) */}
+        {activeTab === 'adminAddProducts' && (
+          <AddProductsPanel
+            logisticsId={activeLogistics.id}
+            onSaveBulkProducts={handleBulkAddProducts}
+            onBack={() => navigateToTab('adminInventory')}
+          />
         )}
 
         {/* TAB 3: INCOMING GOODS / INWARD REQUESTS */}

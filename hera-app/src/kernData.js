@@ -1,10 +1,10 @@
 export const KERN_INITIAL_STOCKS = [
-  // GRN/0002165/26-27
+  // GRN/0002179/26-27 (SA MANDRINE)
   {
     id: 'kern-1',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002165/26-27',
-    inDate: '24-Oct-2026',
+    grnNo: 'GRN/0002179/26-27',
+    inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
     variety: 'MANDRINE',
@@ -19,12 +19,11 @@ export const KERN_INITIAL_STOCKS = [
     category: 'Cold Storage',
     clientName: 'LORDS AND KINGS ENTERPRISES'
   },
-  // GRN/0002166/26-27
   {
     id: 'kern-2',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002166/26-27',
-    inDate: '24-Oct-2026',
+    grnNo: 'GRN/0002179/26-27',
+    inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
     variety: 'MANDRINE',
@@ -102,7 +101,7 @@ export const KERN_INITIAL_STOCKS = [
     id: 'kern-6',
     logisticsId: 'kern',
     grnNo: 'GRN/0002188/26-27',
-    inDate: '27-Oct-2026',
+    inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
     variety: 'MANDRINE',
@@ -121,7 +120,7 @@ export const KERN_INITIAL_STOCKS = [
     id: 'kern-7',
     logisticsId: 'kern',
     grnNo: 'GRN/0002188/26-27',
-    inDate: '27-Oct-2026',
+    inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
     variety: 'MANDRINE',
@@ -141,7 +140,7 @@ export const KERN_INITIAL_STOCKS = [
     id: 'kern-8',
     logisticsId: 'kern',
     grnNo: 'GRN/0002263/26-27',
-    inDate: '03-Nov-2026',
+    inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
     variety: 'MANDRINE',
