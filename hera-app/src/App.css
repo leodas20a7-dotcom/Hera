@@ -4790,6 +4790,39 @@ html, body {
 
 /* Hide duplicate top-toolbar Download PDF on mobile for Kern (shown side-by-side with Summary View / PDF Preview toggle) */
 @media (max-width: 767px) {
+  .app-container {
+    padding-bottom: 84px !important;
+  }
+  .header-nav-segmented {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-top: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) !important;
+    z-index: 900 !important;
+    box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08) !important;
+    display: flex !important;
+    justify-content: space-around !important;
+  }
+  .header-nav-segmented .nav-item-btn {
+    flex: 1 !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    padding: 6px 4px !important;
+    font-size: 0.72rem !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .pwa-install-banner {
+    bottom: 74px !important;
+  }
   .kern-desktop-only-download {
     display: none !important;
   }

@@ -103,47 +103,9 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
   const totalPages = pages.length;
 
   return (
-    <div style={{ paddingBottom: isMobile ? '88px' : '0' }}>
-      {/* Mobile Only: 2 Side-by-Side Buttons (Summary View / PDF Preview toggle + Download PDF) */}
-      {isMobile && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '10px',
-            marginBottom: '12px'
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setViewMode(viewMode === 'summary' ? 'pdf' : 'summary')}
-            style={{
-              border: '1.5px solid #CBD5E1',
-              padding: '10px 12px',
-              borderRadius: '10px',
-              fontSize: '0.82rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              background: '#FFFFFF',
-              color: '#0F172A',
-              boxShadow: '0 1px 3px rgba(15,23,42,0.06)'
-            }}
-          >
-            {viewMode === 'summary' ? '📄 PDF Preview' : '📱 Summary View'}
-          </button>
-          <button
-            type="button"
-            className="doc-download-btn"
-            onClick={onDownloadPdf}
-            style={{ width: '100%', justifyContent: 'center', margin: 0 }}
-          >
-            Download PDF
-          </button>
-        </div>
-      )}
-
-      {/* OPTION 2A: CLEAN MOBILE CARD SUMMARY VIEW */}
-      {viewMode === 'summary' && (
+    <div style={{ paddingBottom: isMobile ? '24px' : '0' }}>
+      {/* OPTION 2A: CLEAN MOBILE CARD SUMMARY VIEW (With compact PDF button inside header card) */}
+      {isMobile && viewMode === 'summary' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* Summary Header Card */}
           <div
@@ -155,20 +117,28 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
               boxShadow: '0 2px 8px rgba(15,23,42,0.04)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <img
                 src={logistics.logo}
                 alt={logistics.legalName}
-                style={{ width: '90px', height: 'auto', display: 'block' }}
+                style={{ width: '76px', height: 'auto', display: 'block', flexShrink: 0 }}
               />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.84rem', fontWeight: '800', color: '#0F172A' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: '800', color: '#0F172A' }}>
                   {logistics.legalName}
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: '600' }}>
+                <div style={{ fontSize: '0.70rem', color: '#64748B', fontWeight: '600' }}>
                   {logistics.hubLabel} • {asOnDate}
                 </div>
               </div>
+              <button
+                type="button"
+                className="doc-download-btn"
+                onClick={onDownloadPdf}
+                style={{ padding: '7px 12px', fontSize: '0.76rem', borderRadius: '9px', flexShrink: 0, margin: 0 }}
+              >
+                ⬇ PDF
+              </button>
             </div>
 
             <div
@@ -317,11 +287,11 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
         </div>
       )}
 
-      {/* OPTION 2B: EXACT A4 PDF SHEET (Auto-scaled on mobile PDF Preview, or off-screen for Download PDF) */}
+      {/* OPTION 2B: EXACT A4 PDF SHEET (Shown on Desktop, or off-screen on Mobile for Download PDF) */}
       <div
         ref={previewWrapRef}
         style={
-          viewMode === 'summary'
+          isMobile && viewMode === 'summary'
             ? { position: 'fixed', left: '-9999px', top: 0, width: `${A4_PREVIEW_WIDTH}px`, pointerEvents: 'none' }
             : {
                 width: '100%',

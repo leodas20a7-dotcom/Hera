@@ -2252,7 +2252,7 @@ function App() {
                   >
                     <span className="nav-label-desktop">📦 Stock View (Current Stock)</span>
                     <span className="nav-label-tablet">📦 Stock View</span>
-                    <span className="nav-label-mobile">📦 Stock</span>
+                    <span className="nav-label-mobile">📊 Summary</span>
                   </button>
                   <button
                     type="button"
@@ -2806,7 +2806,7 @@ function App() {
                 >
                   <span className="nav-label-desktop">📦 Stock View (Current Stock)</span>
                   <span className="nav-label-tablet">📦 Stock View</span>
-                  <span className="nav-label-mobile">📦 Stock</span>
+                  <span className="nav-label-mobile">📊 Summary</span>
                 </button>
                 <button
                   type="button"
