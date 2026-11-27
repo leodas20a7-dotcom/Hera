@@ -105,16 +105,16 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
 
   return (
     <div style={{ paddingBottom: isMobile ? '24px' : '0' }}>
-      {/* OPTION 2A: CLEAN MOBILE CARD SUMMARY VIEW (With compact PDF button inside header card) */}
+      {/* MOBILE: CLEAN SUMMARY CARD VIEW */}
       {isMobile && viewMode === 'summary' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Summary Header Card */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Crisp Summary Header Card */}
           <div
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: '14px',
-              padding: '12px 14px',
+              padding: '12px',
               boxShadow: '0 2px 8px rgba(15,23,42,0.04)'
             }}
           >
@@ -122,51 +122,51 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
               <img
                 src={logistics.logo}
                 alt={logistics.legalName}
-                style={{ width: '76px', height: 'auto', display: 'block', flexShrink: 0 }}
+                style={{ width: '62px', height: 'auto', display: 'block', flexShrink: 0 }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: '800', color: '#0F172A' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#0F172A', lineHeight: '1.25' }}>
                   {logistics.legalName}
                 </div>
-                <div style={{ fontSize: '0.70rem', color: '#64748B', fontWeight: '600' }}>
+                <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: '600', marginTop: '2px' }}>
                   {logistics.hubLabel} • {asOnDate}
                 </div>
               </div>
               <button
                 type="button"
                 className="doc-download-btn"
-                onClick={onDownloadPdf}
-                style={{ padding: '7px 12px', fontSize: '0.76rem', borderRadius: '9px', flexShrink: 0, margin: 0 }}
+                onClick={() => setViewMode('pdf')}
+                style={{ padding: '7px 12px', fontSize: '0.76rem', borderRadius: '9px', flexShrink: 0, margin: 0, whiteSpace: 'nowrap' }}
               >
-                ⬇ PDF
+                📄 PDF
               </button>
             </div>
 
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
                 alignItems: 'center',
                 background: '#F8FAFC',
                 borderRadius: '10px',
-                padding: '8px 10px',
-                gap: '8px',
-                flexWrap: 'wrap'
+                padding: '9px 11px',
+                gap: '10px',
+                border: '1px solid #F1F5F9'
               }}
             >
-              <div>
-                <div style={{ fontSize: '0.66rem', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                   Party
                 </div>
-                <div style={{ fontSize: '0.80rem', fontWeight: '800', color: '#0F172A' }}>
+                <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#0F172A', lineHeight: '1.25', marginTop: '1px' }}>
                   {partyName}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.66rem', color: '#64748B', fontWeight: '700', textTransform: 'uppercase' }}>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                   Closing Qty ({grnGroups.length} GRNs)
                 </div>
-                <div style={{ fontSize: '1rem', fontWeight: '900', color: '#0F766E' }}>
+                <div style={{ fontSize: '1.08rem', fontWeight: '900', color: '#0F766E', lineHeight: '1.2', marginTop: '1px' }}>
                   {grandTotal.toLocaleString('en-IN')}
                 </div>
               </div>
@@ -288,7 +288,50 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
         </div>
       )}
 
-      {/* OPTION 2B: EXACT A4 PDF SHEET (Shown on Desktop, or off-screen on Mobile for Download PDF) */}
+      {/* MOBILE PDF PREVIEW TOP BAR (Shown only when user taps 📄 PDF on mobile) */}
+      {isMobile && viewMode === 'pdf' && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            marginBottom: '10px',
+            background: '#FFFFFF',
+            padding: '8px 10px',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 6px rgba(15,23,42,0.04)'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setViewMode('summary')}
+            style={{
+              border: '1px solid #CBD5E1',
+              background: '#F8FAFC',
+              color: '#0F172A',
+              padding: '7px 12px',
+              borderRadius: '9px',
+              fontSize: '0.78rem',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            &larr; Back to Summary
+          </button>
+          <button
+            type="button"
+            className="doc-download-btn"
+            onClick={onDownloadPdf}
+            style={{ padding: '7px 14px', fontSize: '0.78rem', borderRadius: '9px', margin: 0 }}
+          >
+            ⬇ Download PDF
+          </button>
+        </div>
+      )}
+
+      {/* OPTION 2B: EXACT A4 PDF SHEET (Shown on Desktop or Mobile PDF Preview, off-screen in Mobile Summary) */}
       <div
         ref={previewWrapRef}
         style={
