@@ -137,11 +137,10 @@ export const KERN_INITIAL_STOCKS = [
     category: 'Cold Storage',
     clientName: 'LORDS AND KINGS ENTERPRISES'
   },
-  // GRN/0002263/26-27
   {
     id: 'kern-8',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002263/26-27',
+    grnNo: 'GRN/0002188/26-27',
     inDate: '01-Nov-2026',
     product: 'SA MANDRINE',
     brand: 'QUACHA',
