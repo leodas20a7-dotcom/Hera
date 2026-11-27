@@ -19,6 +19,7 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
     const handleResize = () => {
       const mobileNow = window.innerWidth < 768;
       setIsMobile(mobileNow);
+      setViewMode(mobileNow ? 'summary' : 'pdf');
       if (previewWrapRef.current && sheetRef.current) {
         const availWidth = previewWrapRef.current.clientWidth;
         if (availWidth > 0 && availWidth < A4_PREVIEW_WIDTH) {
