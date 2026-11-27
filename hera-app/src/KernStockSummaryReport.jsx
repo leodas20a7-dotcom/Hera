@@ -50,16 +50,18 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
     return () => window.removeEventListener('resize', updatePdfScale);
   }, [viewMode, stocks]);
 
-  // 1. Group stocks by GRN number while preserving order
+  // 1. Group stocks by GRN number + inDate while preserving order
   const grnGroups = [];
   const groupMap = new Map();
 
   (stocks || []).forEach((item) => {
-    const grnKey = item.grnNo || 'GRN/UNASSIGNED';
+    const grnNo = item.grnNo || 'GRN/UNASSIGNED';
+    const inDate = item.inDate || '';
+    const grnKey = `${grnNo}__${inDate}`;
     if (!groupMap.has(grnKey)) {
       const group = {
-        grnNo: grnKey,
-        inDate: item.inDate || '',
+        grnNo,
+        inDate,
         items: [],
         subtotal: 0
       };
@@ -71,7 +73,7 @@ export function KernStockSummaryReport({ stocks, logistics, partyName, asOnDate,
     group.subtotal += Number(item.qty) || 0;
   });
 
-  grnGroups.sort((a, b) => (a.grnNo || '').localeCompare(b.grnNo || ''));
+  grnGroups.sort((a, b) => (a.grnNo || '').localeCompare(b.grnNo || '') || (a.inDate || '').localeCompare(b.inDate || ''));
 
   const grandTotal = grnGroups.reduce((sum, g) => sum + g.subtotal, 0);
 

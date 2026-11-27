@@ -38,12 +38,12 @@ export const KERN_INITIAL_STOCKS = [
     category: 'Cold Storage',
     clientName: 'LORDS AND KINGS ENTERPRISES'
   },
-  // GRN/0002179/26-27
+  // GRN/0002174/26-27
   {
     id: 'kern-3',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002179/26-27',
-    inDate: '26-Oct-2026',
+    grnNo: 'GRN/0002174/26-27',
+    inDate: '24-Oct-2026',
     product: 'APPLE',
     brand: 'PREMIUM APPLE',
     variety: 'ROYAL',
@@ -58,11 +58,12 @@ export const KERN_INITIAL_STOCKS = [
     category: 'Cold Storage',
     clientName: 'LORDS AND KINGS ENTERPRISES'
   },
+  // GRN/0002175/26-27
   {
     id: 'kern-4',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002179/26-27',
-    inDate: '26-Oct-2026',
+    grnNo: 'GRN/0002175/26-27',
+    inDate: '24-Oct-2026',
     product: 'APPLE',
     brand: 'PREMIUM APPLE',
     variety: 'ROYAL',
@@ -77,10 +78,11 @@ export const KERN_INITIAL_STOCKS = [
     category: 'Cold Storage',
     clientName: 'LORDS AND KINGS ENTERPRISES'
   },
+  // GRN/0002176/26-27
   {
     id: 'kern-5',
     logisticsId: 'kern',
-    grnNo: 'GRN/0002179/26-27',
+    grnNo: 'GRN/0002176/26-27',
     inDate: '26-Oct-2026',
     product: 'APPLE',
     brand: 'PREMIUM APPLE',
