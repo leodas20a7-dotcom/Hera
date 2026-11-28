@@ -54,7 +54,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
     const defaultUnit = logistics?.id === 'kern' ? 'BOX' : 'BAGS';
 
     (inwardRequests || []).forEach((req, idx) => {
-      if (req.status === 'PENDING') return;
+      if (req.status === 'PENDING' || req.status === 'REJECTED') return;
       const qty = Number(req.qty) || 0;
       rows.push({
         id: `inw-${req.id || idx}`,

@@ -1659,6 +1659,27 @@ function App() {
     }
   };
 
+  // Admin Reject / Cancel a PENDING arrival request
+  const handleRejectInwardRequest = async (req) => {
+    if (!req) return;
+    if (!window.confirm(`Reject & cancel arrival request ${req.inwardNo} (${req.product} • ${req.qty} ${req.unit})?`)) {
+      return;
+    }
+
+    setInwardRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'REJECTED' } : r));
+    if (acceptingRequest?.id === req.id) {
+      setAcceptingRequest(null);
+    }
+
+    try {
+      await supabase.from('inward_requests').update({ status: 'REJECTED' }).eq('id', req.id);
+      await loadSupabaseData(activeLogistics.id, { force: true });
+      showToast(`Rejected arrival request ${req.inwardNo}.`, 'info');
+    } catch (err) {
+      console.warn('Supabase reject inward notice:', err);
+    }
+  };
+
   // Admin Edit Delivery Note Handlers
   const handleOpenEditDeliveryNote = (dc) => {
     setEditingDeliveryNote(dc);
@@ -2361,6 +2382,10 @@ function App() {
                                   <span className="wh-bay-badge" style={{ background: '#FEF3C7', color: '#92400E', borderColor: '#FDE68A' }}>
                                     🟡 PENDING ARRIVAL
                                   </span>
+                                ) : req.status === 'REJECTED' ? (
+                                  <span className="wh-bay-badge" style={{ background: '#FEE2E2', color: '#991B1B', borderColor: '#FECACA' }}>
+                                    🔴 REJECTED
+                                  </span>
                                 ) : (
                                   <span className="wh-bay-badge" style={{ background: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>
                                     🟢 STORED IN {req.whLocation}
@@ -2369,9 +2394,29 @@ function App() {
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 {req.status === 'PENDING' ? (
-                                  <button className="row-dispatch-btn" onClick={() => handleOpenAcceptModal(req)}>
-                                    Verify & Accept &rarr;
-                                  </button>
+                                  <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    <button className="row-dispatch-btn" onClick={() => handleOpenAcceptModal(req)}>
+                                      Verify &amp; Accept &rarr;
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRejectInwardRequest(req)}
+                                      style={{
+                                        border: '1px solid #FECACA',
+                                        background: '#FEF2F2',
+                                        color: '#B91C1C',
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.76rem',
+                                        fontWeight: '700',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      ✕ Reject
+                                    </button>
+                                  </div>
+                                ) : req.status === 'REJECTED' ? (
+                                  <span className="grn-sub" style={{ color: '#B91C1C', fontWeight: '700' }}>Cancelled / Rejected</span>
                                 ) : (
                                   <span className="grn-sub">GRN: {req.grnNo}</span>
                                 )}
@@ -2391,8 +2436,14 @@ function App() {
                               <span className="mobile-product-name">{req.product}</span>
                               <span className="mobile-client-name">{req.clientName}</span>
                             </div>
-                            <span className="wh-bay-badge" style={{ background: req.status === 'PENDING' ? '#FEF3C7' : '#DCFCE7', color: req.status === 'PENDING' ? '#92400E' : '#166534' }}>
-                              {req.status === 'PENDING' ? '🟡 PENDING' : '🟢 STORED'}
+                            <span
+                              className="wh-bay-badge"
+                              style={{
+                                background: req.status === 'PENDING' ? '#FEF3C7' : req.status === 'REJECTED' ? '#FEE2E2' : '#DCFCE7',
+                                color: req.status === 'PENDING' ? '#92400E' : req.status === 'REJECTED' ? '#991B1B' : '#166534'
+                              }}
+                            >
+                              {req.status === 'PENDING' ? '🟡 PENDING' : req.status === 'REJECTED' ? '🔴 REJECTED' : '🟢 STORED'}
                             </span>
                           </div>
 
@@ -2414,13 +2465,33 @@ function App() {
                           <div className="mobile-card-footer">
                             <span className="mobile-more-info">📄 {req.inwardNo} • Exp: {req.expectedDate}</span>
                             {req.status === 'PENDING' ? (
-                              <button
-                                className="mobile-card-action-btn"
-                                style={{ background: '#B91C1C' }}
-                                onClick={() => handleOpenAcceptModal(req)}
-                              >
-                                Accept & Stock &rarr;
-                              </button>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectInwardRequest(req)}
+                                  style={{
+                                    border: '1px solid #FECACA',
+                                    background: '#FEF2F2',
+                                    color: '#B91C1C',
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.76rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  ✕ Reject
+                                </button>
+                                <button
+                                  className="mobile-card-action-btn"
+                                  style={{ background: '#0F766E' }}
+                                  onClick={() => handleOpenAcceptModal(req)}
+                                >
+                                  Accept &amp; Stock &rarr;
+                                </button>
+                              </div>
+                            ) : req.status === 'REJECTED' ? (
+                              <span className="grn-sub" style={{ color: '#B91C1C', fontWeight: '700' }}>Rejected</span>
                             ) : (
                               <span className="grn-sub">GRN: {req.grnNo}</span>
                             )}
