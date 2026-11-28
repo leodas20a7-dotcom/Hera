@@ -8,6 +8,7 @@ import { getLogisticsConfig } from './logisticsConfig';
 import { KERN_INITIAL_STOCKS } from './kernData';
 import { KernStockSummaryReport } from './KernStockSummaryReport';
 import { AddProductsPanel } from './AddProductsPanel';
+import { AdminStockLedgerPanel } from './AdminStockLedgerPanel';
 
 // Initial empty stocks (Driven 100% by live Supabase realtime data)
 const INITIAL_STOCKS = [];
@@ -905,6 +906,7 @@ function App() {
     setInwardRequests([]);
     setCart([]);
     setCartStep('review');
+    setReportSubTab('stockReport');
   };
 
   // Inward Cargo Management (Add/Edit/Delete)
@@ -1217,7 +1219,7 @@ function App() {
   const handleBulkAddProducts = async (productRows) => {
     const clientCompany =
       currentUser?.role === 'admin'
-        ? 'LORDS AND KINGS ENTERPRISES'
+        ? (stocks[0]?.clientName || (activeLogistics.id === 'kern' ? 'LORDS AND KINGS ENTERPRISES' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'))
         : currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES';
     const targetInventoryTab = currentUser?.role === 'admin' ? 'adminInventory' : 'clientInventory';
     const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
@@ -2294,6 +2296,15 @@ function App() {
                     <span className="nav-label-tablet">📥 Inward</span>
                     <span className="nav-label-mobile">📥 In</span>
                   </button>
+                  <button
+                    type="button"
+                    className={`report-toggle-btn ${reportSubTab === 'ledger' ? 'active' : ''}`}
+                    onClick={() => setReportSubTab('ledger')}
+                  >
+                    <span className="nav-label-desktop">📑 Ledger &amp; Excel</span>
+                    <span className="nav-label-tablet">📑 Ledger</span>
+                    <span className="nav-label-mobile">📑 Ledger</span>
+                  </button>
                 </div>
 
                 {reportSubTab === 'stockReport' ? (
@@ -2303,6 +2314,10 @@ function App() {
                   >
                     Download PDF
                   </button>
+                ) : reportSubTab === 'ledger' ? (
+                  <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
+                    Admin Movement Statement
+                  </div>
                 ) : reportSubTab === 'inwardHistory' ? (
                   <div style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: '600' }}>
                     Total Inwards: <strong>{inwardRequests.length}</strong>
@@ -2314,7 +2329,14 @@ function App() {
                 )}
               </div>
 
-              {reportSubTab === 'stockReport' ? (
+              {reportSubTab === 'ledger' ? (
+                <AdminStockLedgerPanel
+                  stocks={stocks}
+                  inwardRequests={inwardRequests}
+                  challanHistory={challanHistory}
+                  logistics={activeLogistics}
+                />
+              ) : reportSubTab === 'stockReport' ? (
                 activeLogistics.id === 'kern' ? (
                   <KernStockSummaryReport
                     stocks={stocks}
