@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
+import { PaginationBar, paginateList } from './PaginationBar';
 
 const LEDGER_ROWS_PER_PAGE = 24;
 const A4_WIDTH_PX = 794;
@@ -46,6 +47,8 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
   const [searchText, setSearchText] = useState('');
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' | 'closing'
   const [hideZeroStock, setHideZeroStock] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const pdfSheetRef = useRef(null);
 
@@ -254,12 +257,14 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
     return { detailedClosingRows: filteredBatches, detailedClosingTotal: total };
   }, [allLedgerRows, fromDate, toDate, hideZeroStock, productFilter, searchText]);
 
-  const activeRowCount =
+  const activeList =
     viewMode === 'closing'
-      ? closingSummaryRows.length
+      ? closingSummaryRows
       : viewMode === 'closingDetail'
-        ? detailedClosingRows.length
-        : filteredRows.length;
+        ? detailedClosingRows
+        : filteredRows;
+  const activeRowCount = activeList.length;
+  const { pagedItems: pagedActiveRows, safePage: safeLedgerPage } = paginateList(activeList, page, pageSize);
 
   const applyPreset = (from, to) => {
     setFromDate(from);
@@ -719,7 +724,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                   </tr>
                 </thead>
                 <tbody>
-                  {detailedClosingRows.map((b) => (
+                  {pagedActiveRows.map((b) => (
                     <tr key={b.id}>
                       <td className="indate-cell">{b.txDate}</td>
                       <td><strong>{b.grnNo || '—'}</strong></td>
@@ -746,7 +751,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
             </div>
 
             <div className="stocks-mobile-cards">
-              {detailedClosingRows.map((b) => (
+              {pagedActiveRows.map((b) => (
                 <div key={b.id} className="mobile-stock-card" style={{ padding: '10px 12px' }}>
                   <div className="mobile-card-header" style={{ marginBottom: '4px' }}>
                     <span className="mobile-grn">{b.grnNo || '—'}</span>
@@ -780,7 +785,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                   </tr>
                 </thead>
                 <tbody>
-                  {closingSummaryRows.map((r) => (
+                  {pagedActiveRows.map((r) => (
                     <tr key={r.product}>
                       <td><strong>{r.product}</strong></td>
                       <td>{r.brand || '—'}</td>
@@ -801,7 +806,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
             </div>
 
             <div className="stocks-mobile-cards">
-              {closingSummaryRows.map((r) => (
+              {pagedActiveRows.map((r) => (
                 <div key={r.product} className="mobile-stock-card" style={{ padding: '10px 12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0F172A' }}>{r.product}</span>
@@ -836,7 +841,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((r) => (
+                  {pagedActiveRows.map((r) => (
                     <tr key={r.id}>
                       <td className="indate-cell">{r.txDate}</td>
                       <td>
@@ -883,7 +888,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
             </div>
 
             <div className="stocks-mobile-cards">
-              {filteredRows.map((r) => (
+              {pagedActiveRows.map((r) => (
                 <div key={r.id} className="mobile-stock-card" style={{ padding: '10px 12px' }}>
                   <div className="mobile-card-header" style={{ marginBottom: '6px' }}>
                     <div>
@@ -918,6 +923,13 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
             </div>
           </>
         )}
+        <PaginationBar
+          totalItems={activeRowCount}
+          page={safeLedgerPage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* Off-screen Official Stock Summary Style PDF Sheet */}

@@ -9,6 +9,7 @@ import { KERN_INITIAL_STOCKS } from './kernData';
 import { KernStockSummaryReport } from './KernStockSummaryReport';
 import { AddProductsPanel } from './AddProductsPanel';
 import { AdminStockLedgerPanel } from './AdminStockLedgerPanel';
+import { PaginationBar, paginateList } from './PaginationBar';
 
 // Initial empty stocks (Driven 100% by live Supabase realtime data)
 const INITIAL_STOCKS = [];
@@ -319,6 +320,11 @@ function App() {
   const [dcDateInput, setDcDateInput] = useState(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'));
   const [preparedBy, setPreparedBy] = useState('M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.');
   const [reportSubTab, setReportSubTab] = useState('stockReport'); // 'stockReport' | 'deliveryHistory'
+  const [pageSize, setPageSize] = useState(20);
+  const [stockPage, setStockPage] = useState(1);
+  const [incomingPage, setIncomingPage] = useState(1);
+  const [challanPage, setChallanPage] = useState(1);
+  const [inwardHistoryPage, setInwardHistoryPage] = useState(1);
 
   // Issued Challan modal & PDF state
   const [issuedChallan, setIssuedChallan] = useState(null);
@@ -907,6 +913,10 @@ function App() {
     setCart([]);
     setCartStep('review');
     setReportSubTab('stockReport');
+    setStockPage(1);
+    setIncomingPage(1);
+    setChallanPage(1);
+    setInwardHistoryPage(1);
   };
 
   // Inward Cargo Management (Add/Edit/Delete)
@@ -1908,6 +1918,10 @@ function App() {
     })
     .sort((a, b) => (a.grnNo || '').localeCompare(b.grnNo || ''));
 
+  const { pagedItems: pagedStocks, safePage: safeStockPage } = paginateList(visibleStocks, stockPage, pageSize);
+  const { pagedItems: pagedInwards, safePage: safeIncomingPage } = paginateList(inwardRequests, incomingPage, pageSize);
+  const { pagedItems: pagedChallans, safePage: safeChallanPage } = paginateList(challanHistory, challanPage, pageSize);
+
   const totalCartCount = cart.reduce((sum, item) => sum + item.selectedQty, 0);
   const totalWarehouseBags = stocks.reduce((sum, item) => sum + Math.round((item.weightKg || item.qty || 0) / 50), 0);
   const totalWarehouseWeight = stocks.reduce((sum, item) => sum + (item.weightKg || item.qty || 0), 0);
@@ -2182,7 +2196,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleStocks.map((item) => (
+                      {pagedStocks.map((item) => (
                         <tr key={item.id} className="stock-row" onClick={() => handleRowClick(item)}>
                           <td>
                             <div className="doc-num-bold">{item.docNo}</div>
@@ -2232,7 +2246,7 @@ function App() {
 
                 {/* Mobile View: Major Values Card Feed */}
                 <div className="stocks-mobile-cards">
-                  {visibleStocks.map((item) => (
+                  {pagedStocks.map((item) => (
                     <div key={item.id} className="mobile-stock-card" onClick={() => handleRowClick(item)}>
                       <div className="mobile-card-top">
                         <div className="mobile-card-product">
@@ -2287,6 +2301,13 @@ function App() {
                     </div>
                   ))}
                 </div>
+                <PaginationBar
+                  totalItems={visibleStocks.length}
+                  page={safeStockPage}
+                  pageSize={pageSize}
+                  onPageChange={setStockPage}
+                  onPageSizeChange={setPageSize}
+                />
               </div>
             </div>
           </div>
@@ -2351,7 +2372,7 @@ function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {inwardRequests.map((req) => (
+                          {pagedInwards.map((req) => (
                             <tr key={req.id}>
                               <td>
                                 <div className="doc-num-bold">{req.inwardNo}</div>
@@ -2429,7 +2450,7 @@ function App() {
 
                     {/* Mobile View */}
                     <div className="stocks-mobile-cards">
-                      {inwardRequests.map((req) => (
+                      {pagedInwards.map((req) => (
                         <div key={req.id} className="mobile-stock-card">
                           <div className="mobile-card-top">
                             <div className="mobile-card-product">
@@ -2499,6 +2520,13 @@ function App() {
                         </div>
                       ))}
                     </div>
+                    <PaginationBar
+                      totalItems={inwardRequests.length}
+                      page={safeIncomingPage}
+                      pageSize={pageSize}
+                      onPageChange={setIncomingPage}
+                      onPageSizeChange={setPageSize}
+                    />
                   </div>
                 </div>
               )}
@@ -2699,7 +2727,7 @@ function App() {
                     </div>
                   ) : (
                     <div className="delivery-history-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      {challanHistory.map((dc) => (
+                      {pagedChallans.map((dc) => (
                         <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                           <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                             <div>
@@ -2757,6 +2785,13 @@ function App() {
                           </div>
                         </div>
                       ))}
+                      <PaginationBar
+                        totalItems={challanHistory.length}
+                        page={safeChallanPage}
+                        pageSize={pageSize}
+                        onPageChange={setChallanPage}
+                        onPageSizeChange={setPageSize}
+                      />
                     </div>
                   )}
                 </div>
@@ -2793,7 +2828,7 @@ function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {challanHistory.map((dc) => (
+                        {pagedChallans.map((dc) => (
                           <tr key={dc.id}>
                             <td><strong className="doc-num-bold">{dc.dcNo}</strong></td>
                             <td>{dc.dcDate}</td>
@@ -2820,7 +2855,7 @@ function App() {
                   </div>
 
                   <div className="stocks-mobile-cards">
-                    {challanHistory.map((dc) => (
+                    {pagedChallans.map((dc) => (
                       <div key={dc.id} className="mobile-stock-card" onClick={() => setIssuedChallan(dc)}>
                         <div className="mobile-card-top">
                           <div className="mobile-card-product">
@@ -2866,6 +2901,13 @@ function App() {
                       </div>
                     ))}
                   </div>
+                  <PaginationBar
+                    totalItems={challanHistory.length}
+                    page={safeChallanPage}
+                    pageSize={pageSize}
+                    onPageChange={setChallanPage}
+                    onPageSizeChange={setPageSize}
+                  />
                 </div>
               )}
             </div>
@@ -2986,7 +3028,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleStocks.map((item) => (
+                      {pagedStocks.map((item) => (
                         <tr key={item.id} className="stock-row" onClick={() => handleRowClick(item)}>
                           <td>
                             <div className="doc-num-bold">{item.docNo}</div>
@@ -3024,7 +3066,7 @@ function App() {
 
                 {/* Mobile View: Major Values Card Feed */}
                 <div className="stocks-mobile-cards">
-                  {visibleStocks.map((item) => (
+                  {pagedStocks.map((item) => (
                     <div key={item.id} className="mobile-stock-card" onClick={() => handleRowClick(item)}>
                       <div className="mobile-card-top">
                         <div className="mobile-card-product">
@@ -3065,6 +3107,13 @@ function App() {
                     </div>
                   ))}
                 </div>
+                <PaginationBar
+                  totalItems={visibleStocks.length}
+                  page={safeStockPage}
+                  pageSize={pageSize}
+                  onPageChange={setStockPage}
+                  onPageSizeChange={setPageSize}
+                />
               </div>
             </div>
           </div>
@@ -3254,7 +3303,7 @@ function App() {
                   </div>
                 ) : (
                   <div className="delivery-history-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {challanHistory.map((dc) => (
+                    {pagedChallans.map((dc) => (
                       <div key={dc.id} className="mobile-stock-card" style={{ border: '1px solid #E2E8F0', borderRadius: '14px', padding: '16px', background: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                         <div className="mobile-card-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                           <div>
@@ -3314,6 +3363,13 @@ function App() {
                         </div>
                       </div>
                     ))}
+                    <PaginationBar
+                      totalItems={challanHistory.length}
+                      page={safeChallanPage}
+                      pageSize={pageSize}
+                      onPageChange={setChallanPage}
+                      onPageSizeChange={setPageSize}
+                    />
                   </div>
                 )}
               </div>
@@ -4217,6 +4273,7 @@ function App() {
   }
 
   function renderInwardHistoryCard() {
+    const { pagedItems: pagedInwardHist, safePage: safeInwardHistPage } = paginateList(inwardRequests, inwardHistoryPage, pageSize);
     return (
       <div className="table-card dashboard-table-card" style={{ marginTop: '8px', padding: '16px 20px' }}>
         <div className="dash-table-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4253,7 +4310,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inwardRequests.map((req) => (
+                  {pagedInwardHist.map((req) => (
                     <tr key={req.id}>
                       <td><div className="doc-num-bold">{req.grnNo || req.inwardNo}</div></td>
                       <td>{req.expectedDate || req.createdAt}</td>
@@ -4287,7 +4344,7 @@ function App() {
             </div>
 
             <div className="stocks-mobile-cards">
-              {inwardRequests.map((req) => (
+              {pagedInwardHist.map((req) => (
                 <div key={req.id} className="mobile-stock-card">
                   <div className="mobile-card-top">
                     <div className="mobile-card-product">
@@ -4318,6 +4375,13 @@ function App() {
                 </div>
               ))}
             </div>
+            <PaginationBar
+              totalItems={inwardRequests.length}
+              page={safeInwardHistPage}
+              pageSize={pageSize}
+              onPageChange={setInwardHistoryPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         )}
       </div>
