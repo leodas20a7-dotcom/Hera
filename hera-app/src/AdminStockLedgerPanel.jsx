@@ -1,8 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
 
-const LEDGER_ROWS_PER_PAGE = 26;
+const LEDGER_ROWS_PER_PAGE = 24;
 const A4_WIDTH_PX = 794;
+const A4_PAGE_HEIGHT_PX = 1050; // ~263mm height (safely within 285mm A4 printable area)
 
 const MONTHS = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
@@ -99,28 +100,30 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
       });
     });
 
+    const cleanDash = (val) => (val && val !== '—' ? val : '');
+
     (challanHistory || []).forEach((note, nIdx) => {
       const items = note.items && note.items.length > 0
         ? note.items
-        : [{ product: 'Dispatch', dispatchedQty: note.totalQty || 0, unit: 'BOX' }];
+        : [{ product: 'Dispatch', selectedQty: note.totalQty || 0, unit: defaultUnit }];
       items.forEach((it, iIdx) => {
-        const qty = Number(it.dispatchedQty) || 0;
+        const qty = Number(it.selectedQty ?? it.dispatchedQty ?? note.totalQty) || 0;
         rows.push({
           id: `out-${note.id || nIdx}-${iIdx}`,
           txDate: note.dcDate || '',
           isoDate: toIsoDate(note.dcDate),
           movement: 'OUT',
           movementGroup: 'OUT',
-          grnNo: it.grnNo || '',
+          grnNo: cleanDash(it.grnNo),
           voucherNo: note.dcNo || '',
           party: note.customerName || '',
           product: it.product || '',
-          brand: it.brand || '',
-          variety: it.variety || '',
-          lotNo: it.lotNo || '',
+          brand: cleanDash(it.brand),
+          variety: cleanDash(it.variety),
+          lotNo: cleanDash(it.lotNo),
           rateType: it.rateType || '',
           unit: it.unit || defaultUnit,
-          subUom: it.count || '',
+          subUom: cleanDash(it.count),
           inQty: 0,
           outQty: qty
         });
@@ -201,7 +204,62 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
     return hideZeroStock ? list.filter((row) => row.closingQty !== 0) : list;
   }, [filteredRows, hideZeroStock, logistics?.id]);
 
-  const activeRowCount = viewMode === 'closing' ? closingSummaryRows.length : filteredRows.length;
+  const { detailedClosingRows, detailedClosingTotal } = useMemo(() => {
+    const queuesByProduct = new Map();
+    const outByProduct = new Map();
+
+    allLedgerRows.forEach((r) => {
+      if (toDate && (!r.isoDate || r.isoDate > toDate)) return;
+      const prodKey = r.product || 'UNKNOWN';
+      if (r.movementGroup === 'IN') {
+        if (!queuesByProduct.has(prodKey)) queuesByProduct.set(prodKey, []);
+        queuesByProduct.get(prodKey).push({ ...r, remainingQty: r.inQty });
+      } else {
+        outByProduct.set(prodKey, (outByProduct.get(prodKey) || 0) + r.outQty);
+      }
+    });
+
+    const batches = [];
+    queuesByProduct.forEach((queue, prodKey) => {
+      let toDeduct = outByProduct.get(prodKey) || 0;
+      queue.forEach((batch) => {
+        if (toDeduct > 0) {
+          const used = Math.min(batch.remainingQty, toDeduct);
+          batch.remainingQty -= used;
+          toDeduct -= used;
+        }
+        batches.push(batch);
+      });
+    });
+
+    const q = searchText.trim().toLowerCase();
+    const filteredBatches = batches.filter((b) => {
+      if (fromDate && (!b.isoDate || b.isoDate < fromDate)) return false;
+      if (hideZeroStock && b.remainingQty <= 0) return false;
+      if (productFilter !== 'ALL' && b.product !== productFilter) return false;
+      if (q) {
+        const hay = `${b.grnNo} ${b.voucherNo} ${b.party} ${b.product} ${b.brand} ${b.variety} ${b.lotNo} ${b.subUom}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    filteredBatches.sort((a, b) =>
+      (a.grnNo || '').localeCompare(b.grnNo || '') ||
+      (a.isoDate || '').localeCompare(b.isoDate || '') ||
+      (a.product || '').localeCompare(b.product || '')
+    );
+
+    const total = filteredBatches.reduce((sum, b) => sum + b.remainingQty, 0);
+    return { detailedClosingRows: filteredBatches, detailedClosingTotal: total };
+  }, [allLedgerRows, fromDate, toDate, hideZeroStock, productFilter, searchText]);
+
+  const activeRowCount =
+    viewMode === 'closing'
+      ? closingSummaryRows.length
+      : viewMode === 'closingDetail'
+        ? detailedClosingRows.length
+        : filteredRows.length;
 
   const applyPreset = (from, to) => {
     setFromDate(from);
@@ -224,6 +282,18 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
         lines.push([r.product, r.brand, r.unit, r.inQty, r.outQty, r.closingQty].map(csvEscape).join(','));
       });
       lines.push(['TOTAL', `${closingSummaryRows.length} products`, '', totalIn, totalOut, netClosing].map(csvEscape).join(','));
+    } else if (viewMode === 'closingDetail') {
+      lines.push([
+        'GRN Date', 'GRN No', 'Product', 'Brand', 'Variety',
+        'Lot No', 'Rate Type', 'UOM', 'Sub UOM', 'Original In Qty', 'Closing Qty'
+      ].map(csvEscape).join(','));
+      detailedClosingRows.forEach((b) => {
+        lines.push([
+          b.txDate, b.grnNo, b.product, b.brand, b.variety,
+          b.lotNo, b.rateType, b.unit, b.subUom, b.inQty, b.remainingQty
+        ].map(csvEscape).join(','));
+      });
+      lines.push(['TOTAL', `${detailedClosingRows.length} batches`, '', '', '', '', '', '', '', '', detailedClosingTotal].map(csvEscape).join(','));
     } else {
       const headers = [
         'Date', 'Movement', 'GRN No', 'Voucher / DC No', 'Party',
@@ -264,7 +334,12 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const rangeTag = toDate ? `upto_${toDate}` : 'all';
-    const typeTag = viewMode === 'closing' ? 'Closing_Stock' : 'Stock_Ledger';
+    const typeTag =
+      viewMode === 'closing'
+        ? 'Closing_Summary'
+        : viewMode === 'closingDetail'
+          ? 'Closing_Stock_Detail'
+          : 'Stock_Ledger';
     link.href = url;
     link.download = `${logistics?.pdfPrefix || 'Hera'}_${typeTag}_${rangeTag}.csv`;
     document.body.appendChild(link);
@@ -274,22 +349,32 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
   };
 
   const pdfPages = useMemo(() => {
-    const sourceRows = viewMode === 'closing' ? closingSummaryRows : filteredRows;
+    const sourceRows =
+      viewMode === 'closing'
+        ? closingSummaryRows
+        : viewMode === 'closingDetail'
+          ? detailedClosingRows
+          : filteredRows;
     if (sourceRows.length === 0) return [[]];
     const chunks = [];
     for (let i = 0; i < sourceRows.length; i += LEDGER_ROWS_PER_PAGE) {
       chunks.push(sourceRows.slice(i, i + LEDGER_ROWS_PER_PAGE));
     }
     return chunks;
-  }, [viewMode, closingSummaryRows, filteredRows]);
+  }, [viewMode, closingSummaryRows, detailedClosingRows, filteredRows]);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const element = pdfSheetRef.current;
     if (!element || activeRowCount === 0) return;
     setIsPdfDownloading(true);
 
     const rangeTag = toDate ? `upto_${toDate}` : 'all';
-    const typeTag = viewMode === 'closing' ? 'Closing_Stock' : 'Stock_Ledger';
+    const typeTag =
+      viewMode === 'closing'
+        ? 'Closing_Summary'
+        : viewMode === 'closingDetail'
+          ? 'Closing_Stock_Detail'
+          : 'Stock_Ledger';
     const filename = `${logistics?.pdfPrefix || 'Hera'}_${typeTag}_${rangeTag}.pdf`;
 
     const opt = {
@@ -305,19 +390,30 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
         windowWidth: A4_WIDTH_PX,
         scrollY: 0
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'], before: '.html2pdf__page-break' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf()
-      .set(opt)
-      .from(element)
-      .save()
-      .then(() => setIsPdfDownloading(false))
-      .catch((err) => {
-        console.warn('Ledger PDF save error:', err);
+    try {
+      const pageEls = Array.from(element.querySelectorAll('.ledger-pdf-page'));
+      if (pageEls.length === 0) {
         setIsPdfDownloading(false);
-      });
+        return;
+      }
+      const pdf = await html2pdf().set(opt).from(pageEls[0]).toPdf().get('pdf');
+      for (let i = 1; i < pageEls.length; i++) {
+        const img = await html2pdf().set(opt).from(pageEls[i]).toImg().get('img');
+        pdf.addPage();
+        const props = pdf.getImageProperties(img);
+        const pdfWidth = 198;
+        const pdfHeight = Math.min(285, (props.height * pdfWidth) / props.width);
+        pdf.addImage(img, 'JPEG', 6, 6, pdfWidth, pdfHeight);
+      }
+      pdf.save(filename);
+    } catch (err) {
+      console.warn('Ledger PDF save error:', err);
+    } finally {
+      setIsPdfDownloading(false);
+    }
   };
 
   const periodLabel = fromDate || toDate
@@ -463,11 +559,27 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                 cursor: 'pointer'
               }}
             >
-              📦 Closing Stock Only ({closingSummaryRows.length})
+              📦 Closing Summary ({closingSummaryRows.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('closingDetail')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: viewMode === 'closingDetail' ? '1.5px solid #B91C1C' : '1px solid #CBD5E1',
+                background: viewMode === 'closingDetail' ? '#B91C1C' : '#F8FAFC',
+                color: viewMode === 'closingDetail' ? '#FFFFFF' : '#334155',
+                fontSize: '0.78rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              📑 Closing Stock Detail ({detailedClosingRows.length})
             </button>
           </div>
 
-          {viewMode === 'closing' && (
+          {(viewMode === 'closing' || viewMode === 'closingDetail') && (
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: '700', color: '#334155', cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -590,6 +702,69 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
             <h3>No Matching Records</h3>
             <p>Adjust your date range or filters to view stock movement.</p>
           </div>
+        ) : viewMode === 'closingDetail' ? (
+          <>
+            <div className="stocks-desktop-table" style={{ overflowX: 'auto' }}>
+              <table className="stocks-table" style={{ fontSize: '0.8rem' }}>
+                <thead>
+                  <tr>
+                    <th>GRN Date</th>
+                    <th>GRN No.</th>
+                    <th>Product</th>
+                    <th>Brand / Variety</th>
+                    <th>Lot / Sub UOM</th>
+                    <th>Rate / UOM</th>
+                    <th style={{ textAlign: 'right' }}>In Qty</th>
+                    <th style={{ textAlign: 'right' }}>Closing Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detailedClosingRows.map((b) => (
+                    <tr key={b.id}>
+                      <td className="indate-cell">{b.txDate}</td>
+                      <td><strong>{b.grnNo || '—'}</strong></td>
+                      <td><strong>{b.product}</strong></td>
+                      <td>
+                        <div>{b.brand || '—'}</div>
+                        {b.variety && <div className="grn-sub">{b.variety}</div>}
+                      </td>
+                      <td>
+                        <div>{b.lotNo || '—'}</div>
+                        {b.subUom && <div className="grn-sub">{b.subUom}</div>}
+                      </td>
+                      <td>{b.rateType} • {b.unit}</td>
+                      <td style={{ textAlign: 'right', color: '#64748B' }}>
+                        {b.inQty.toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: '800', color: '#0F766E' }}>
+                        {b.remainingQty.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="stocks-mobile-cards">
+              {detailedClosingRows.map((b) => (
+                <div key={b.id} className="mobile-stock-card" style={{ padding: '10px 12px' }}>
+                  <div className="mobile-card-header" style={{ marginBottom: '4px' }}>
+                    <span className="mobile-grn">{b.grnNo || '—'}</span>
+                    <span className="mobile-date">{b.txDate}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.86rem', fontWeight: '800', color: '#0F172A' }}>{b.product}</span>
+                    <span style={{ fontSize: '0.94rem', fontWeight: '900', color: '#0F766E' }}>
+                      {b.remainingQty.toLocaleString('en-IN')} {b.unit}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#64748B', marginTop: '2px' }}>
+                    {[b.brand, b.variety, b.lotNo ? `Lot ${b.lotNo}` : '', b.subUom].filter(Boolean).join(' • ')} (In: {b.inQty.toLocaleString('en-IN')})
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : viewMode === 'closing' ? (
           <>
             <div className="stocks-desktop-table" style={{ overflowX: 'auto' }}>
@@ -751,18 +926,21 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
           {pdfPages.map((pageRows, pageIdx) => {
             const isLastPage = pageIdx === pdfPages.length - 1;
             return (
-              <React.Fragment key={pageIdx}>
-                <div
-                  style={{
-                    background: '#ffffff',
-                    color: '#000000',
-                    fontFamily: 'Arial, Helvetica, sans-serif',
-                    minHeight: '260mm',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between'
-                  }}
-                >
+              <div
+                key={pageIdx}
+                className="ledger-pdf-page"
+                style={{
+                  background: '#ffffff',
+                  color: '#000000',
+                  fontFamily: 'Arial, Helvetica, sans-serif',
+                  height: `${A4_PAGE_HEIGHT_PX}px`,
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  overflow: 'hidden'
+                }}
+              >
                   <div
                     style={{
                       background: '#ffffff',
@@ -817,7 +995,11 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                         color: '#000000'
                       }}
                     >
-                      {viewMode === 'closing' ? 'CLOSING STOCK SUMMARY' : 'STOCK MOVEMENT LEDGER'}
+                      {viewMode === 'closing'
+                        ? 'CLOSING STOCK SUMMARY'
+                        : viewMode === 'closingDetail'
+                          ? 'STOCK SUMMARY (CLOSING STOCK DETAIL)'
+                          : 'STOCK MOVEMENT LEDGER'}
                     </div>
 
                     {/* Party & Period Strip */}
@@ -845,7 +1027,49 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                     </div>
 
                     {/* Table */}
-                    {viewMode === 'closing' ? (
+                    {viewMode === 'closingDetail' ? (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.67rem', color: '#000000' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #000000' }}>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>GRN Date</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>GRN No.</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>ProductName</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>Brand</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>LotNo</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>UOM</th>
+                            <th style={{ textAlign: 'left', padding: '5px 4px', fontWeight: '800' }}>SubUom</th>
+                            <th style={{ textAlign: 'right', padding: '5px 4px', fontWeight: '800' }}>ClosingQty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pageRows.map((b) => (
+                            <tr key={b.id} style={{ borderBottom: '1px dotted #94A3B8' }}>
+                              <td style={{ padding: '4px', whiteSpace: 'nowrap' }}>{b.txDate}</td>
+                              <td style={{ padding: '4px', whiteSpace: 'nowrap' }}>{b.grnNo || '—'}</td>
+                              <td style={{ padding: '4px', fontWeight: '700' }}>{b.product}</td>
+                              <td style={{ padding: '4px' }}>{b.brand || '—'}</td>
+                              <td style={{ padding: '4px' }}>{b.lotNo || '—'}</td>
+                              <td style={{ padding: '4px' }}>{b.unit}</td>
+                              <td style={{ padding: '4px' }}>{b.subUom || '—'}</td>
+                              <td style={{ padding: '4px', textAlign: 'right', fontWeight: '800', fontVariantNumeric: 'tabular-nums' }}>
+                                {b.remainingQty.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {isLastPage && (
+                          <tfoot>
+                            <tr style={{ borderTop: '2px double #000000', borderBottom: '1.5px solid #000000' }}>
+                              <td colSpan={6}></td>
+                              <td style={{ padding: '5px 4px', fontWeight: '800', textAlign: 'left' }}>Total Qty</td>
+                              <td style={{ padding: '5px 4px', fontWeight: '800', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {detailedClosingTotal.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    ) : viewMode === 'closing' ? (
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem', color: '#000000' }}>
                         <thead>
                           <tr style={{ borderBottom: '1.5px solid #000000' }}>
@@ -968,13 +1192,6 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                     Page {pageIdx + 1} of {pdfPages.length}
                   </div>
                 </div>
-                {!isLastPage && (
-                  <div
-                    className="html2pdf__page-break"
-                    style={{ pageBreakBefore: 'always', breakBefore: 'page', height: 0, margin: 0, padding: 0 }}
-                  />
-                )}
-              </React.Fragment>
             );
           })}
         </div>
