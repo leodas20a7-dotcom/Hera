@@ -43,6 +43,8 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
   const [movementFilter, setMovementFilter] = useState('ALL'); // 'ALL' | 'IN' | 'OUT'
   const [productFilter, setProductFilter] = useState('ALL');
   const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState('detailed'); // 'detailed' | 'closing'
+  const [hideZeroStock, setHideZeroStock] = useState(true);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const pdfSheetRef = useRef(null);
 
@@ -175,6 +177,32 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
     };
   }, [allLedgerRows, fromDate, toDate, movementFilter, productFilter, searchText]);
 
+  const closingSummaryRows = useMemo(() => {
+    const map = new Map();
+    filteredRows.forEach((r) => {
+      const key = r.product || 'UNKNOWN';
+      if (!map.has(key)) {
+        map.set(key, {
+          product: key,
+          brand: r.brand || '',
+          unit: r.unit || (logistics?.id === 'kern' ? 'BOX' : 'BAGS'),
+          inQty: 0,
+          outQty: 0,
+          closingQty: 0
+        });
+      }
+      const entry = map.get(key);
+      if (!entry.brand && r.brand) entry.brand = r.brand;
+      entry.inQty += r.inQty;
+      entry.outQty += r.outQty;
+      entry.closingQty = entry.inQty - entry.outQty;
+    });
+    const list = Array.from(map.values()).sort((a, b) => a.product.localeCompare(b.product));
+    return hideZeroStock ? list.filter((row) => row.closingQty !== 0) : list;
+  }, [filteredRows, hideZeroStock, logistics?.id]);
+
+  const activeRowCount = viewMode === 'closing' ? closingSummaryRows.length : filteredRows.length;
+
   const applyPreset = (from, to) => {
     setFromDate(from);
     setToDate(to);
@@ -189,46 +217,56 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
   };
 
   const handleDownloadExcel = () => {
-    const headers = [
-      'Date', 'Movement', 'GRN No', 'Voucher / DC No', 'Party',
-      'Product', 'Brand', 'Variety', 'Lot No', 'Rate Type',
-      'UOM', 'Sub UOM', 'In Qty', 'Out Qty', 'Running Closing Qty'
-    ];
-    const lines = [headers.map(csvEscape).join(',')];
+    const lines = [];
+    if (viewMode === 'closing') {
+      lines.push(['Product', 'Brand', 'UOM', 'In Qty', 'Out Qty', 'Closing Stock'].map(csvEscape).join(','));
+      closingSummaryRows.forEach((r) => {
+        lines.push([r.product, r.brand, r.unit, r.inQty, r.outQty, r.closingQty].map(csvEscape).join(','));
+      });
+      lines.push(['TOTAL', `${closingSummaryRows.length} products`, '', totalIn, totalOut, netClosing].map(csvEscape).join(','));
+    } else {
+      const headers = [
+        'Date', 'Movement', 'GRN No', 'Voucher / DC No', 'Party',
+        'Product', 'Brand', 'Variety', 'Lot No', 'Rate Type',
+        'UOM', 'Sub UOM', 'In Qty', 'Out Qty', 'Running Closing Qty'
+      ];
+      lines.push(headers.map(csvEscape).join(','));
 
-    filteredRows.forEach((r) => {
+      filteredRows.forEach((r) => {
+        lines.push([
+          r.txDate,
+          r.movement,
+          r.grnNo,
+          r.voucherNo,
+          r.party,
+          r.product,
+          r.brand,
+          r.variety,
+          r.lotNo,
+          r.rateType,
+          r.unit,
+          r.subUom,
+          r.inQty || '',
+          r.outQty || '',
+          r.runningBalance
+        ].map(csvEscape).join(','));
+      });
+
       lines.push([
-        r.txDate,
-        r.movement,
-        r.grnNo,
-        r.voucherNo,
-        r.party,
-        r.product,
-        r.brand,
-        r.variety,
-        r.lotNo,
-        r.rateType,
-        r.unit,
-        r.subUom,
-        r.inQty || '',
-        r.outQty || '',
-        r.runningBalance
+        'TOTAL', '', '', '', `${filteredRows.length} records`,
+        '', '', '', '', '', '', '',
+        totalIn, totalOut, netClosing
       ].map(csvEscape).join(','));
-    });
-
-    lines.push([
-      'TOTAL', '', '', '', `${filteredRows.length} records`,
-      '', '', '', '', '', '', '',
-      totalIn, totalOut, netClosing
-    ].map(csvEscape).join(','));
+    }
 
     const csvContent = '\uFEFF' + lines.join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const rangeTag = toDate ? `upto_${toDate}` : 'all';
+    const typeTag = viewMode === 'closing' ? 'Closing_Stock' : 'Stock_Ledger';
     link.href = url;
-    link.download = `${logistics?.pdfPrefix || 'Kern'}_Stock_Ledger_${rangeTag}.csv`;
+    link.download = `${logistics?.pdfPrefix || 'Hera'}_${typeTag}_${rangeTag}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -236,21 +274,23 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
   };
 
   const pdfPages = useMemo(() => {
-    if (filteredRows.length === 0) return [[]];
+    const sourceRows = viewMode === 'closing' ? closingSummaryRows : filteredRows;
+    if (sourceRows.length === 0) return [[]];
     const chunks = [];
-    for (let i = 0; i < filteredRows.length; i += LEDGER_ROWS_PER_PAGE) {
-      chunks.push(filteredRows.slice(i, i + LEDGER_ROWS_PER_PAGE));
+    for (let i = 0; i < sourceRows.length; i += LEDGER_ROWS_PER_PAGE) {
+      chunks.push(sourceRows.slice(i, i + LEDGER_ROWS_PER_PAGE));
     }
     return chunks;
-  }, [filteredRows]);
+  }, [viewMode, closingSummaryRows, filteredRows]);
 
   const handleDownloadPdf = () => {
     const element = pdfSheetRef.current;
-    if (!element || filteredRows.length === 0) return;
+    if (!element || activeRowCount === 0) return;
     setIsPdfDownloading(true);
 
     const rangeTag = toDate ? `upto_${toDate}` : 'all';
-    const filename = `${logistics?.pdfPrefix || 'Hera'}_Stock_Ledger_${rangeTag}.pdf`;
+    const typeTag = viewMode === 'closing' ? 'Closing_Stock' : 'Stock_Ledger';
+    const filename = `${logistics?.pdfPrefix || 'Hera'}_${typeTag}_${rangeTag}.pdf`;
 
     const opt = {
       margin: [6, 6, 6, 6],
@@ -362,7 +402,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
               type="button"
               className="doc-download-btn"
               onClick={handleDownloadPdf}
-              disabled={filteredRows.length === 0 || isPdfDownloading}
+              disabled={activeRowCount === 0 || isPdfDownloading}
               style={{ margin: 0, padding: '8px 14px', fontSize: '0.8rem', borderRadius: '9px', background: '#1E293B' }}
             >
               {isPdfDownloading ? '⏳ Generating...' : '📄 Download PDF'}
@@ -371,12 +411,72 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
               type="button"
               className="doc-download-btn"
               onClick={handleDownloadExcel}
-              disabled={filteredRows.length === 0}
+              disabled={activeRowCount === 0}
               style={{ margin: 0, padding: '8px 14px', fontSize: '0.8rem', borderRadius: '9px' }}
             >
-              📥 Download Excel ({filteredRows.length})
+              📥 Download Excel ({activeRowCount})
             </button>
           </div>
+        </div>
+
+        {/* View Mode Switcher: Detailed Movements vs Closing Stock Only */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+            marginBottom: '12px',
+            paddingBottom: '10px',
+            borderBottom: '1px solid #F1F5F9'
+          }}
+        >
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('detailed')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: viewMode === 'detailed' ? '1.5px solid #0F172A' : '1px solid #CBD5E1',
+                background: viewMode === 'detailed' ? '#0F172A' : '#F8FAFC',
+                color: viewMode === 'detailed' ? '#FFFFFF' : '#334155',
+                fontSize: '0.78rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              📋 Detailed Movements ({filteredRows.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('closing')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: viewMode === 'closing' ? '1.5px solid #0F766E' : '1px solid #CBD5E1',
+                background: viewMode === 'closing' ? '#0F766E' : '#F8FAFC',
+                color: viewMode === 'closing' ? '#FFFFFF' : '#334155',
+                fontSize: '0.78rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              📦 Closing Stock Only ({closingSummaryRows.length})
+            </button>
+          </div>
+
+          {viewMode === 'closing' && (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: '700', color: '#334155', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={hideZeroStock}
+                onChange={(e) => setHideZeroStock(e.target.checked)}
+              />
+              Hide Zero Stock (0)
+            </label>
+          )}
         </div>
 
         {/* Filter Inputs */}
@@ -484,12 +584,64 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
 
       {/* Ledger Results */}
       <div className="table-card" style={{ padding: '12px' }}>
-        {filteredRows.length === 0 ? (
+        {activeRowCount === 0 ? (
           <div className="empty-cart-card" style={{ margin: '12px 0' }}>
             <div className="empty-icon">📑</div>
             <h3>No Matching Records</h3>
             <p>Adjust your date range or filters to view stock movement.</p>
           </div>
+        ) : viewMode === 'closing' ? (
+          <>
+            <div className="stocks-desktop-table" style={{ overflowX: 'auto' }}>
+              <table className="stocks-table" style={{ fontSize: '0.84rem' }}>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>UOM</th>
+                    <th style={{ textAlign: 'right' }}>Total Inward</th>
+                    <th style={{ textAlign: 'right' }}>Total Outward</th>
+                    <th style={{ textAlign: 'right' }}>Closing Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closingSummaryRows.map((r) => (
+                    <tr key={r.product}>
+                      <td><strong>{r.product}</strong></td>
+                      <td>{r.brand || '—'}</td>
+                      <td>{r.unit}</td>
+                      <td style={{ textAlign: 'right', fontWeight: '700', color: '#047857' }}>
+                        {r.inQty.toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: '700', color: '#B91C1C' }}>
+                        {r.outQty.toLocaleString('en-IN')}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: '800', color: '#0F766E' }}>
+                        {r.closingQty.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="stocks-mobile-cards">
+              {closingSummaryRows.map((r) => (
+                <div key={r.product} className="mobile-stock-card" style={{ padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0F172A' }}>{r.product}</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: '900', color: '#0F766E' }}>
+                      {r.closingQty.toLocaleString('en-IN')} {r.unit}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B', fontWeight: '600' }}>
+                    <span>In: <strong style={{ color: '#047857' }}>{r.inQty.toLocaleString('en-IN')}</strong></span>
+                    <span>Out: <strong style={{ color: '#B91C1C' }}>{r.outQty.toLocaleString('en-IN')}</strong></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             <div className="stocks-desktop-table" style={{ overflowX: 'auto' }}>
@@ -665,7 +817,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                         color: '#000000'
                       }}
                     >
-                      STOCK MOVEMENT LEDGER
+                      {viewMode === 'closing' ? 'CLOSING STOCK SUMMARY' : 'STOCK MOVEMENT LEDGER'}
                     </div>
 
                     {/* Party & Period Strip */}
@@ -693,6 +845,56 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                     </div>
 
                     {/* Table */}
+                    {viewMode === 'closing' ? (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem', color: '#000000' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1.5px solid #000000' }}>
+                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: '800' }}>ProductName</th>
+                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: '800' }}>Brand</th>
+                            <th style={{ textAlign: 'left', padding: '6px 4px', fontWeight: '800' }}>UOM</th>
+                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>In Qty</th>
+                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>Out Qty</th>
+                            <th style={{ textAlign: 'right', padding: '6px 4px', fontWeight: '800' }}>ClosingQty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pageRows.map((r) => (
+                            <tr key={r.product} style={{ borderBottom: '1px dotted #94A3B8' }}>
+                              <td style={{ padding: '5px 4px', fontWeight: '700' }}>{r.product}</td>
+                              <td style={{ padding: '5px 4px' }}>{r.brand || '—'}</td>
+                              <td style={{ padding: '5px 4px' }}>{r.unit}</td>
+                              <td style={{ padding: '5px 4px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {r.inQty.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '5px 4px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {r.outQty.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: '800', fontVariantNumeric: 'tabular-nums' }}>
+                                {r.closingQty.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {isLastPage && (
+                          <tfoot>
+                            <tr style={{ borderTop: '2px double #000000', borderBottom: '1.5px solid #000000' }}>
+                              <td colSpan={3} style={{ padding: '6px 4px', fontWeight: '800', textAlign: 'right' }}>
+                                Total ({closingSummaryRows.length} Products)
+                              </td>
+                              <td style={{ padding: '6px 4px', fontWeight: '800', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {totalIn.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '6px 4px', fontWeight: '800', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {totalOut.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '6px 4px', fontWeight: '800', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {netClosing.toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.67rem', color: '#000000' }}>
                       <thead>
                         <tr style={{ borderBottom: '1.5px solid #000000' }}>
@@ -749,6 +951,7 @@ export function AdminStockLedgerPanel({ stocks, inwardRequests, challanHistory, 
                         </tfoot>
                       )}
                     </table>
+                    )}
                   </div>
 
                   {/* Page Footer */}
