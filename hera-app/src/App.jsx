@@ -1215,19 +1215,100 @@ function App() {
     }
   };
 
-  // Bulk / Multi-row Add Products directly into warehouse_stocks (Excel fields)
+  const parseArrivalRemarks = (remarks) => {
+    const str = String(remarks || '');
+    const rateMatch = str.match(/Rate:\s*([^|]+)/i);
+    const subMatch = str.match(/SubUOM:\s*([^|]+)/i);
+    return {
+      rateType: rateMatch ? rateMatch[1].trim() : '',
+      subUom: subMatch ? subMatch[1].trim() : ''
+    };
+  };
+
+  // Bulk / Multi-row Arrival Products: Client sends PENDING request to Admin; Admin saves directly to warehouse_stocks
   const handleBulkAddProducts = async (productRows) => {
-    const clientCompany =
-      currentUser?.role === 'admin'
-        ? (stocks[0]?.clientName || (activeLogistics.id === 'kern' ? 'LORDS AND KINGS ENTERPRISES' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'))
-        : currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES';
-    const targetInventoryTab = currentUser?.role === 'admin' ? 'adminInventory' : 'clientInventory';
+    const isClient = currentUser?.role !== 'admin';
+    const clientCompany = isClient
+      ? (currentUser?.company || currentUser?.name || 'LORDS AND KINGS ENTERPRISES')
+      : (stocks[0]?.clientName || (activeLogistics.id === 'kern' ? 'LORDS AND KINGS ENTERPRISES' : 'M/S. LORDS AND KINGS ENTERPRISES PVT.LTD.'));
+    const targetInventoryTab = isClient ? 'clientInventory' : 'adminInventory';
     const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
     const defaultCategory = activeLogistics.id === 'kern' ? 'Cold Storage' : 'Dry Goods';
+    const defaultRate = activeLogistics.id === 'kern' ? 'Weekly' : 'Daily';
+    const defaultUnit = activeLogistics.id === 'kern' ? 'BOX' : 'BAGS';
+
+    if (isClient) {
+      const baseTime = Date.now();
+      const pendingPayloads = productRows.map((row, idx) => {
+        const qtyNum = parseFloat(row.qty) || 0;
+        const unitVal = row.unit || defaultUnit;
+        const weightNum = unitVal === 'BAGS' ? qtyNum * 50 : qtyNum * 20;
+        const rateVal = row.rateType || defaultRate;
+        const subVal = row.subUom || '';
+        const inwardCode = `ARR-${String(baseTime + idx).slice(-6)}`;
+        return {
+          logistics_id: activeLogistics.id,
+          inward_no: inwardCode,
+          grn_no: row.grnNo || '',
+          wh_location: 'PENDING-BAY',
+          client_name: clientCompany,
+          product: row.product,
+          category: defaultCategory,
+          brand: row.brand || '',
+          variety: row.variety || '',
+          qty: qtyNum,
+          unit: unitVal,
+          weight_kg: weightNum,
+          vehicle_no: '',
+          driver_phone: currentUser?.phone || '',
+          expected_date: row.inDate,
+          doc_no: row.lotNo || '',
+          remarks: `Rate: ${rateVal}${subVal ? ` | SubUOM: ${subVal}` : ''}`,
+          status: 'PENDING'
+        };
+      });
+
+      const localReqs = pendingPayloads.map((p, idx) => ({
+        id: baseTime + idx,
+        inwardNo: p.inward_no,
+        clientName: p.client_name,
+        product: p.product,
+        category: p.category,
+        brand: p.brand,
+        variety: p.variety,
+        qty: p.qty,
+        unit: p.unit,
+        weightKg: p.weight_kg,
+        vehicleNo: p.vehicle_no,
+        driverPhone: p.driver_phone,
+        expectedDate: p.expected_date,
+        docNo: p.doc_no,
+        remarks: p.remarks,
+        status: 'PENDING',
+        grnNo: p.grn_no,
+        whLocation: p.wh_location,
+        createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+      }));
+      setInwardRequests(prev => [...localReqs, ...prev]);
+
+      try {
+        const { error: reqErr } = await supabase.from('inward_requests').insert(pendingPayloads);
+        if (!reqErr) {
+          await loadSupabaseData(activeLogistics.id, { force: true });
+        }
+        showToast(`Sent ${pendingPayloads.length} arrival request(s) to Admin for approval!`, 'success');
+      } catch (err) {
+        console.warn('Supabase arrival request notice:', err);
+        showToast(`Saved ${pendingPayloads.length} arrival request(s) locally.`, 'success');
+      }
+      navigateToTab(targetInventoryTab);
+      return;
+    }
 
     const newStockItems = productRows.map((row, idx) => {
       const qtyNum = parseFloat(row.qty) || 0;
-      const weightNum = row.unit === 'BAGS' ? qtyNum * 50 : qtyNum * 20;
+      const unitVal = row.unit || defaultUnit;
+      const weightNum = unitVal === 'BAGS' ? qtyNum * 50 : qtyNum * 20;
       return {
         id: Date.now() + idx,
         logisticsId: activeLogistics.id,
@@ -1241,10 +1322,10 @@ function App() {
         variety: row.variety || '',
         whLocation: defaultBay,
         lotNo: row.lotNo || '',
-        count: row.subUom || (row.unit === 'BAGS' ? '50KG BAGS' : '-'),
-        rateType: row.rateType || (activeLogistics.id === 'kern' ? 'Weekly' : 'Daily'),
+        count: row.subUom || (unitVal === 'BAGS' ? '50KG BAGS' : '-'),
+        rateType: row.rateType || defaultRate,
         qty: qtyNum,
-        unit: row.unit || 'BOX',
+        unit: unitVal,
         subUom: row.subUom || '',
         weightKg: weightNum,
         tagClass: 'tag-blue'
@@ -1427,27 +1508,31 @@ function App() {
 
     const acceptedQty = parseFloat(acceptQty) || acceptingRequest.qty;
     const acceptedWeight = parseFloat(acceptWeight) || acceptingRequest.weightKg;
-    const grnNumber = 'GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27';
+    const grnNumber = acceptingRequest.grnNo || ('GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27');
+    const inDateVal = acceptingRequest.expectedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+    const { rateType: parsedRate, subUom: parsedSubUom } = parseArrivalRemarks(acceptingRequest.remarks);
+    const rateVal = parsedRate || (activeLogistics.id === 'kern' ? 'Weekly' : 'Daily');
+    const lotVal = acceptingRequest.docNo || ('LOT-' + Math.floor(10000 + Math.random() * 90000));
 
     // 1. Add to active warehouse stocks
     const newStockItem = {
       id: Date.now(),
       logisticsId: activeLogistics.id,
-      docNo: acceptingRequest.docNo,
+      docNo: acceptingRequest.docNo || '',
       grnNo: grnNumber,
-      inDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+      inDate: inDateVal,
       clientName: acceptingRequest.clientName,
       product: acceptingRequest.product,
       category: acceptingRequest.category,
       brand: acceptingRequest.brand,
       variety: acceptingRequest.variety,
       whLocation: acceptBay,
-      lotNo: 'LOT-' + Math.floor(10000 + Math.random() * 90000),
-      count: acceptingRequest.unit === 'BAGS' ? '50KG BAGS' : 'STANDARD',
-      rateType: activeLogistics.id === 'kern' ? 'Weekly' : 'Daily',
+      lotNo: lotVal,
+      count: parsedSubUom || (acceptingRequest.unit === 'BAGS' ? '50KG BAGS' : '-'),
+      rateType: rateVal,
       qty: acceptedQty,
       unit: acceptingRequest.unit,
-      subUom: '',
+      subUom: parsedSubUom,
       weightKg: acceptedWeight,
       tagClass: 'tag-blue'
     };
@@ -1481,6 +1566,7 @@ function App() {
         wh_location: newStockItem.whLocation,
         lot_no: newStockItem.lotNo,
         count: newStockItem.count,
+        sub_uom: newStockItem.subUom,
         rate_type: newStockItem.rateType,
         qty: newStockItem.qty,
         unit: newStockItem.unit,
@@ -1492,8 +1578,84 @@ function App() {
         grn_no: grnNumber,
         wh_location: acceptBay
       }).eq('id', acceptedId);
+      await loadSupabaseData(activeLogistics.id, { force: true });
+      showToast('Arrival approved and added to live stock!', 'success');
     } catch (err) {
       console.warn('Supabase accept inward sync notice:', err);
+    }
+  };
+
+  // Batch approve all PENDING arrival requests into warehouse_stocks
+  const handleApproveAllPending = async () => {
+    const pendingList = inwardRequests.filter(r => r.status === 'PENDING');
+    if (pendingList.length === 0) return;
+
+    const defaultBay = activeLogistics.id === 'kern' ? 'COLD-A1' : 'SIP-A1';
+    const stockPayloads = [];
+    const acceptedIds = [];
+    const localStocks = [];
+
+    pendingList.forEach((req, idx) => {
+      const grnNumber = req.grnNo || ('GRN/000' + Math.floor(1000 + Math.random() * 9000) + '/26-27');
+      const inDateVal = req.expectedDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+      const { rateType: parsedRate, subUom: parsedSubUom } = parseArrivalRemarks(req.remarks);
+      const rateVal = parsedRate || (activeLogistics.id === 'kern' ? 'Weekly' : 'Daily');
+      const lotVal = req.docNo || ('LOT-' + Math.floor(10000 + Math.random() * 90000));
+      const bay = req.whLocation && req.whLocation !== 'PENDING-BAY' ? req.whLocation : defaultBay;
+
+      acceptedIds.push(req.id);
+      localStocks.push({
+        id: Date.now() + idx,
+        logisticsId: activeLogistics.id,
+        docNo: req.docNo || '',
+        grnNo: grnNumber,
+        inDate: inDateVal,
+        clientName: req.clientName,
+        product: req.product,
+        category: req.category,
+        brand: req.brand,
+        variety: req.variety,
+        whLocation: bay,
+        lotNo: lotVal,
+        count: parsedSubUom || (req.unit === 'BAGS' ? '50KG BAGS' : '-'),
+        rateType: rateVal,
+        qty: req.qty,
+        unit: req.unit,
+        subUom: parsedSubUom,
+        weightKg: req.weightKg || 0,
+        tagClass: 'tag-blue'
+      });
+      stockPayloads.push({
+        logistics_id: activeLogistics.id,
+        client_name: req.clientName,
+        doc_no: req.docNo || '',
+        grn_no: grnNumber,
+        in_date: inDateVal,
+        product: req.product,
+        category: req.category,
+        brand: req.brand,
+        variety: req.variety,
+        wh_location: bay,
+        lot_no: lotVal,
+        count: parsedSubUom || (req.unit === 'BAGS' ? '50KG BAGS' : '-'),
+        sub_uom: parsedSubUom,
+        rate_type: rateVal,
+        qty: req.qty,
+        unit: req.unit,
+        weight_kg: req.weightKg || 0
+      });
+    });
+
+    setStocks(prev => [...localStocks, ...prev]);
+    setInwardRequests(prev => prev.map(r => r.status === 'PENDING' ? { ...r, status: 'ACCEPTED', whLocation: defaultBay } : r));
+
+    try {
+      await supabase.from('warehouse_stocks').insert(stockPayloads);
+      await supabase.from('inward_requests').update({ status: 'ACCEPTED', wh_location: defaultBay }).in('id', acceptedIds);
+      await loadSupabaseData(activeLogistics.id, { force: true });
+      showToast(`Approved ${pendingList.length} pending arrival(s) into live stock!`, 'success');
+    } catch (err) {
+      console.warn('Supabase batch approve notice:', err);
     }
   };
 
@@ -1928,9 +2090,9 @@ function App() {
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminAddProducts' ? 'active' : ''}`} onClick={() => navigateToTab('adminAddProducts')}>
               <span className="nav-icon">📥</span>
-              <span className="nav-label-desktop">Add Products</span>
-              <span className="nav-label-tablet">Add</span>
-              <span className="nav-label-mobile">Add</span>
+              <span className="nav-label-desktop">Arrival Products</span>
+              <span className="nav-label-tablet">Arrival</span>
+              <span className="nav-label-mobile">Arrival</span>
             </button>
             <button className={`nav-item-btn ${activeTab === 'adminIncoming' ? 'active' : ''}`} onClick={() => navigateToTab('adminIncoming')}>
               <span className="nav-icon">📥</span>
@@ -1978,7 +2140,7 @@ function App() {
                   <h1 className="page-heading">All Stored Stock</h1>
                 </div>
                 <button className="btn-add-inward-top" onClick={() => navigateToTab('adminAddProducts')}>
-                  + Add Products
+                  + Arrival Products
                 </button>
               </div>
 
@@ -2136,8 +2298,18 @@ function App() {
                 </div>
               ) : (
                 <div className="table-card dashboard-table-card">
-                  <div className="dash-table-header">
+                  <div className="dash-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <h3>Incoming Shipment Notices ({inwardRequests.length})</h3>
+                    {inwardRequests.filter(r => r.status === 'PENDING').length > 0 && (
+                      <button
+                        type="button"
+                        className="doc-download-btn"
+                        onClick={handleApproveAllPending}
+                        style={{ margin: 0, padding: '7px 14px', fontSize: '0.8rem', borderRadius: '9px' }}
+                      >
+                        ✅ Approve All Pending ({inwardRequests.filter(r => r.status === 'PENDING').length})
+                      </button>
+                    )}
                   </div>
 
                   <div className="stocks-table-wrapper">
@@ -2673,9 +2845,9 @@ function App() {
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientSendGoods' ? 'active' : ''}`} onClick={() => navigateToTab('clientSendGoods')}>
             <span className="nav-icon">📥</span>
-            <span className="nav-label-desktop">Add Products</span>
-            <span className="nav-label-tablet">Add Products</span>
-            <span className="nav-label-mobile">Add</span>
+            <span className="nav-label-desktop">Arrival Products</span>
+            <span className="nav-label-tablet">Arrival</span>
+            <span className="nav-label-mobile">Arrival</span>
           </button>
           <button className={`nav-item-btn ${activeTab === 'clientInwardReport' ? 'active' : ''}`} onClick={() => navigateToTab('clientInwardReport')}>
             <span className="nav-icon">📄</span>
@@ -2710,7 +2882,7 @@ function App() {
                 <h1 className="page-heading">My Stored Cargo</h1>
               </div>
               <button className="btn-add-inward-top" onClick={() => navigateToTab('clientSendGoods')}>
-                + Add Products
+                + Arrival Products
               </button>
             </div>
 
@@ -2828,12 +3000,13 @@ function App() {
         </div>
       )}
 
-      {/* CLIENT TAB 2: ADD PRODUCTS (EXCEL FIELDS + BULK INSERT) */}
+      {/* CLIENT TAB 2: ARRIVAL PRODUCTS (SENDS PENDING REQUEST TO ADMIN) */}
       {activeTab === 'clientSendGoods' && (
         <AddProductsPanel
           logisticsId={activeLogistics.id}
           onSaveBulkProducts={handleBulkAddProducts}
           onBack={() => navigateToTab('clientInventory')}
+          isClientRequest={true}
         />
       )}
 

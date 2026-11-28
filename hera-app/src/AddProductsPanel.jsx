@@ -17,7 +17,7 @@ const createEmptyRow = (logisticsId, prevRow = null) => ({
   qty: ''
 });
 
-export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
+export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack, isClientRequest = false }) {
   const [entryMode, setEntryMode] = useState('rows'); // 'rows' | 'bulk'
   const [rows, setRows] = useState(() => [createEmptyRow(logisticsId)]);
   const [bulkText, setBulkText] = useState('');
@@ -120,7 +120,12 @@ export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
         <div className="cart-white-card checkout-card">
           <div className="cart-header-row" style={{ flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <h2>Add Products</h2>
+              <h2>Arrival Products</h2>
+              {isClientRequest && (
+                <p style={{ fontSize: '0.78rem', color: '#64748B', margin: '4px 0 0', fontWeight: '600' }}>
+                  Submitted items are sent to Admin for review and added to live stock after approval.
+                </p>
+              )}
             </div>
 
             <div style={{ display: 'inline-flex', background: '#E2E8F0', padding: '3px', borderRadius: '10px', gap: '4px' }}>
@@ -333,7 +338,11 @@ export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
                   &larr; Back to Stock
                 </button>
                 <button type="submit" className="btn-submit-challan" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : `Save ${rows.length} Product${rows.length > 1 ? 's' : ''} →`}
+                  {isSaving
+                    ? (isClientRequest ? 'Sending...' : 'Saving...')
+                    : isClientRequest
+                      ? `Send ${rows.length} Arrival Request${rows.length > 1 ? 's' : ''} →`
+                      : `Save ${rows.length} Product${rows.length > 1 ? 's' : ''} →`}
                 </button>
               </div>
             </form>
@@ -394,7 +403,11 @@ export function AddProductsPanel({ logisticsId, onSaveBulkProducts, onBack }) {
                   disabled={isSaving || parsedBulkRows.length === 0}
                   onClick={handleSubmitBulk}
                 >
-                  {isSaving ? 'Importing...' : `Import ${parsedBulkRows.length} Products →`}
+                  {isSaving
+                    ? (isClientRequest ? 'Sending...' : 'Importing...')
+                    : isClientRequest
+                      ? `Send ${parsedBulkRows.length} Arrival Requests →`
+                      : `Import ${parsedBulkRows.length} Products →`}
                 </button>
               </div>
             </div>
